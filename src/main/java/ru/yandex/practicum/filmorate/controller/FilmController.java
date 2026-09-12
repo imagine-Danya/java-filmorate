@@ -1,15 +1,13 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
@@ -17,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class FilmController {
 
-    private final List<Film> films = new ArrayList<>();
+    private final Map<Integer, Film> films = new HashMap<>();
     private final AtomicInteger idGenerator = new AtomicInteger(1);
 
     @PostMapping
@@ -26,10 +24,11 @@ public class FilmController {
 
         validateFilm(film);
 
-        film.setId(idGenerator.getAndIncrement());
-        films.add(film);
+        Integer id = idGenerator.getAndIncrement();
+        film.setId(id);
+        films.put(id, film);
 
-        log.info("Фильм успешно создан с id: {}", film.getId());
+        log.info("Фильм успешно создан с id: {}", id);
         return film;
     }
 
@@ -44,25 +43,21 @@ public class FilmController {
             throw new ValidationException("ID фильма не может быть null при обновлении");
         }
 
-        Film existingFilm = films.stream()
-                .filter(f -> f.getId().equals(film.getId()))
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.warn("Фильм с id {} не найден", film.getId());
-                    return new NotFoundException("Фильм с id " + film.getId() + " не найден");
-                });
+        if (!films.containsKey(film.getId())) {
+            log.warn("Фильм с id {} не найден", film.getId());
+            throw new ValidationException("Фильм с id " + film.getId() + " не найден");
+        }
 
-        int index = films.indexOf(existingFilm);
-        films.set(index, film);
+        films.put(film.getId(), film);
 
         log.info("Фильм с id {} успешно обновлен", film.getId());
         return film;
     }
 
     @GetMapping
-    public List<Film> getAllFilms() {
+    public Collection<Film> getAllFilms() {
         log.info("Получен запрос на получение всех фильмов");
-        return new ArrayList<>(films);
+        return films.values();
     }
 
     private void validateFilm(Film film) {
