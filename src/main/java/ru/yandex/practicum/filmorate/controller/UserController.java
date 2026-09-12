@@ -2,14 +2,13 @@ package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.User;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
@@ -17,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class UserController {
 
-    private final List<User> users = new ArrayList<>();
+    private final Map<Integer, User> users = new HashMap<>();
     private final AtomicInteger idGenerator = new AtomicInteger(1);
 
     @PostMapping
@@ -26,10 +25,11 @@ public class UserController {
 
         validateUser(user);
 
-        user.setId(idGenerator.getAndIncrement());
-        users.add(user);
+        Integer id = idGenerator.getAndIncrement();
+        user.setId(id);
+        users.put(id, user);
 
-        log.info("Пользователь успешно создан с id: {}", user.getId());
+        log.info("Пользователь успешно создан с id: {}", id);
         return user;
     }
 
@@ -44,25 +44,21 @@ public class UserController {
             throw new ValidationException("ID пользователя не может быть null при обновлении");
         }
 
-        User existingUser = users.stream()
-                .filter(u -> u.getId().equals(user.getId()))
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.warn("Пользователь с id {} не найден", user.getId());
-                    return new NotFoundException("Пользователь с id " + user.getId() + " не найден");
-                });
+        if (!users.containsKey(user.getId())) {
+            log.warn("Пользователь с id {} не найден", user.getId());
+            throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
+        }
 
-        int index = users.indexOf(existingUser);
-        users.set(index, user);
+        users.put(user.getId(), user);
 
         log.info("Пользователь с id {} успешно обновлен", user.getId());
         return user;
     }
 
     @GetMapping
-    public List<User> getAllUsers() {
+    public Collection<User> getAllUsers() {
         log.info("Получен запрос на получение всех пользователей");
-        return new ArrayList<>(users);
+        return users.values();
     }
 
     private void validateUser(User user) {
