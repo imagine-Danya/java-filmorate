@@ -50,6 +50,9 @@ public class FilmService {
 
     public void removeLike(Long filmId, Long userId) {
         Film film = findById(filmId);
+        if (!userStorage.findById(userId).isPresent()) {
+            throw new NotFoundException("Пользователь с id " + userId + " не найден");
+        }
         film.getLikes().remove(userId);
         filmStorage.update(film);
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
