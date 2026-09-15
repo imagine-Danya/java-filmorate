@@ -1,12 +1,15 @@
 package ru.yandex.practicum.filmorate.model;
 
-import lombok.Data;
 import jakarta.validation.constraints.*;
+import lombok.Data;
+
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 public class User {
-    private Integer id;
+    private Long id;
 
     @Email(message = "Электронная почта должна быть корректной")
     @NotBlank(message = "Электронная почта не может быть пустой")
@@ -18,11 +21,14 @@ public class User {
 
     private String name;
 
+    @NotNull(message = "Дата рождения не может быть пустой")
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
 
+    private Set<Long> friends = new HashSet<>();
+
     public String getName() {
-        if (name == null || name.isEmpty()) {
+        if (name == null || name.isBlank()) {
             return login;
         }
         return name;
