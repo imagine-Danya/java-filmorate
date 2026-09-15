@@ -135,12 +135,12 @@ class FilmControllerTest {
     void findById_shouldReturnNotFound() throws Exception {
         mockMvc.perform(get("/films/999"))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
                 .andDo(print());
     }
 
     @Test
     void addLike_shouldReturnOk() throws Exception {
-        // Создаем пользователя
         User user = new User();
         user.setEmail("test@example.com");
         user.setLogin("testuser");
@@ -148,7 +148,6 @@ class FilmControllerTest {
         user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
 
-        // Создаем фильм
         Film film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
@@ -156,15 +155,13 @@ class FilmControllerTest {
         film.setDuration(120);
         Film createdFilm = filmStorage.create(film);
 
-        // Добавляем лайк
         mockMvc.perform(put("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
                 .andExpect(status().isOk())
                 .andDo(print());
     }
 
     @Test
-    void removeLike_shouldReturnOk() throws Exception {
-        // Создаем пользователя
+    void addLike_withNonExistentFilm_shouldReturnNotFound() throws Exception {
         User user = new User();
         user.setEmail("test@example.com");
         user.setLogin("testuser");
@@ -172,7 +169,36 @@ class FilmControllerTest {
         user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
 
-        // Создаем фильм с лайком
+        mockMvc.perform(put("/films/999/like/" + createdUser.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(print());
+    }
+
+    @Test
+    void addLike_withNonExistentUser_shouldReturnNotFound() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        Film createdFilm = filmStorage.create(film);
+
+        mockMvc.perform(put("/films/" + createdFilm.getId() + "/like/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(print());
+    }
+
+    @Test
+    void removeLike_shouldReturnOk() throws Exception {
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setLogin("testuser");
+        user.setName("Test User");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+        User createdUser = userStorage.create(user);
+
         Film film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
@@ -183,6 +209,36 @@ class FilmControllerTest {
 
         mockMvc.perform(delete("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
                 .andExpect(status().isOk())
+                .andDo(print());
+    }
+
+    @Test
+    void removeLike_withNonExistentFilm_shouldReturnNotFound() throws Exception {
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setLogin("testuser");
+        user.setName("Test User");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+        User createdUser = userStorage.create(user);
+
+        mockMvc.perform(delete("/films/999/like/" + createdUser.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
+                .andDo(print());
+    }
+
+    @Test
+    void removeLike_withNonExistentUser_shouldReturnNotFound() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        Film createdFilm = filmStorage.create(film);
+
+        mockMvc.perform(delete("/films/" + createdFilm.getId() + "/like/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
                 .andDo(print());
     }
 
