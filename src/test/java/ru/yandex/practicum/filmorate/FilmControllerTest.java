@@ -1,81 +1,218 @@
 package ru.yandex.practicum.filmorate;
 
-import org.junit.jupiter.api.BeforeEach;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
+@SpringBootTest
+@AutoConfigureMockMvc
 class FilmControllerTest {
 
-    private FilmController filmController;
+    @Autowired
+    private MockMvc mockMvc;
 
-    @BeforeEach
-    void setUp() {
-        filmController = new FilmController();
-    }
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private FilmStorage filmStorage;
+
+    @Autowired
+    private UserStorage userStorage;
 
     @Test
-    void contextLoads() {
-        assertNotNull(filmController);
-    }
-
-    @Test
-    void testFilmValidData() {
+    void createFilm_shouldReturnCreatedFilm() throws Exception {
         Film film = new Film();
         film.setName("Test Film");
-        film.setDescription("A test film");
+        film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
 
-        assertNotNull(film.getName());
-        assertTrue(film.getDuration() > 0);
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value("Test Film"))
+                .andDo(print());
     }
 
     @Test
-    void testFilmReleaseDateBoundary() {
+    void createFilm_withInvalidName_shouldReturnBadRequest() throws Exception {
         Film film = new Film();
-        film.setName("Test Film");
-        film.setReleaseDate(LocalDate.of(1895, 12, 28));
-        film.setDuration(90);
+        film.setName("");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
 
-        assertEquals(LocalDate.of(1895, 12, 28), film.getReleaseDate());
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isBadRequest())
+                .andDo(print());
     }
 
     @Test
-    void testFilmReleaseDateTooEarly() {
+    void createFilm_withInvalidReleaseDate_shouldReturnBadRequest() throws Exception {
         Film film = new Film();
         film.setName("Test Film");
-        film.setReleaseDate(LocalDate.of(1895, 12, 27));
-        film.setDuration(90);
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(1800, 1, 1));
+        film.setDuration(120);
 
-        assertThrows(ValidationException.class, () -> {
-            if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
-                throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
-            }
-        });
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(film)))
+                .andExpect(status().isBadRequest())
+                .andDo(print());
     }
 
     @Test
-    void testFilmDurationPositive() {
+    void updateFilm_shouldReturnUpdatedFilm() throws Exception {
         Film film = new Film();
         film.setName("Test Film");
-        film.setDuration(1);
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        Film created = filmStorage.create(film);
+        created.setName("Updated Film");
 
-        assertTrue(film.getDuration() > 0);
+        mockMvc.perform(put("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(created)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Film"))
+                .andDo(print());
     }
 
     @Test
-    void testFilmDescriptionMaxLength() {
+    void findAllFilms_shouldReturnListOfFilms() throws Exception {
         Film film = new Film();
         film.setName("Test Film");
-        String description = "a".repeat(200);
-        film.setDescription(description);
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        filmStorage.create(film);
 
-        assertEquals(200, film.getDescription().length());
+        mockMvc.perform(get("/films"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[?(@.name == 'Test Film')]").exists())
+                .andDo(print());
+    }
+
+    @Test
+    void findById_shouldReturnFilm() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        Film created = filmStorage.create(film);
+
+        mockMvc.perform(get("/films/" + created.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(created.getId()))
+                .andExpect(jsonPath("$.name").value("Test Film"))
+                .andDo(print());
+    }
+
+    @Test
+    void findById_shouldReturnNotFound() throws Exception {
+        mockMvc.perform(get("/films/999"))
+                .andExpect(status().isNotFound())
+                .andDo(print());
+    }
+
+    @Test
+    void addLike_shouldReturnOk() throws Exception {
+        // Создаем пользователя
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setLogin("testuser");
+        user.setName("Test User");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+        User createdUser = userStorage.create(user);
+
+        // Создаем фильм
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        Film createdFilm = filmStorage.create(film);
+
+        // Добавляем лайк
+        mockMvc.perform(put("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
+                .andExpect(status().isOk())
+                .andDo(print());
+    }
+
+    @Test
+    void removeLike_shouldReturnOk() throws Exception {
+        // Создаем пользователя
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setLogin("testuser");
+        user.setName("Test User");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+        User createdUser = userStorage.create(user);
+
+        // Создаем фильм с лайком
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        film.getLikes().add(createdUser.getId());
+        Film createdFilm = filmStorage.create(film);
+
+        mockMvc.perform(delete("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
+                .andExpect(status().isOk())
+                .andDo(print());
+    }
+
+    @Test
+    void getPopularFilms_shouldReturnListOfFilms() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        filmStorage.create(film);
+
+        mockMvc.perform(get("/films/popular?count=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andDo(print());
+    }
+
+    @Test
+    void getPopularFilms_defaultCount_shouldReturnFilms() throws Exception {
+        Film film = new Film();
+        film.setName("Test Film");
+        film.setDescription("Test Description");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+        filmStorage.create(film);
+
+        mockMvc.perform(get("/films/popular"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andDo(print());
     }
 }
