@@ -41,7 +41,6 @@ public class UserService {
         user.getFriends().add(friendId);
         friend.getFriends().add(userId);
 
-        // Не вызываем userStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
     }
 
@@ -52,7 +51,6 @@ public class UserService {
         user.getFriends().remove(friendId);
         friend.getFriends().remove(userId);
 
-        // Не вызываем userStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
     }
 
