@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -29,14 +30,19 @@ class UserControllerTest {
     @Autowired
     private UserStorage userStorage;
 
-    @Test
-    void createUser_shouldReturnCreatedUser() throws Exception {
-        User user = new User();
+    private User user;
+
+    @BeforeEach
+    void setUp() {
+        user = new User();
         user.setEmail("test@example.com");
         user.setLogin("testuser");
         user.setName("Test User");
         user.setBirthday(LocalDate.of(1990, 1, 1));
+    }
 
+    @Test
+    void createUser_shouldReturnCreatedUser() throws Exception {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(user)))
@@ -48,10 +54,7 @@ class UserControllerTest {
 
     @Test
     void createUser_withInvalidEmail_shouldReturnBadRequest() throws Exception {
-        User user = new User();
         user.setEmail("invalid-email");
-        user.setLogin("testuser");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,10 +65,7 @@ class UserControllerTest {
 
     @Test
     void createUser_withSpacesInLogin_shouldReturnBadRequest() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
         user.setLogin("test user");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -76,9 +76,6 @@ class UserControllerTest {
 
     @Test
     void createUser_withFutureBirthday_shouldReturnBadRequest() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
         user.setBirthday(LocalDate.now().plusDays(1));
 
         mockMvc.perform(post("/users")
@@ -90,11 +87,6 @@ class UserControllerTest {
 
     @Test
     void updateUser_shouldReturnUpdatedUser() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User created = userStorage.create(user);
         created.setName("Updated Name");
 
@@ -108,11 +100,6 @@ class UserControllerTest {
 
     @Test
     void findAllUsers_shouldReturnListOfUsers() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         userStorage.create(user);
 
         mockMvc.perform(get("/users"))
@@ -124,11 +111,6 @@ class UserControllerTest {
 
     @Test
     void findById_shouldReturnUser() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User created = userStorage.create(user);
 
         mockMvc.perform(get("/users/" + created.getId()))
@@ -142,72 +124,61 @@ class UserControllerTest {
     void findById_shouldReturnNotFound() throws Exception {
         mockMvc.perform(get("/users/999"))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").exists())
                 .andDo(print());
     }
 
     @Test
     void addFriend_shouldReturnOk() throws Exception {
-        User user1 = new User();
-        user1.setEmail("user1@example.com");
-        user1.setLogin("user1");
-        user1.setBirthday(LocalDate.of(1990, 1, 1));
-        User created1 = userStorage.create(user1);
+        User user1 = userStorage.create(user);
 
         User user2 = new User();
         user2.setEmail("friend@example.com");
         user2.setLogin("friend");
         user2.setBirthday(LocalDate.of(1991, 1, 1));
-        User created2 = userStorage.create(user2);
+        User user2Created = userStorage.create(user2);
 
-        mockMvc.perform(put("/users/" + created1.getId() + "/friends/" + created2.getId()))
+        mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2Created.getId()))
                 .andExpect(status().isOk())
                 .andDo(print());
     }
 
     @Test
     void removeFriend_shouldReturnOk() throws Exception {
-        User user1 = new User();
-        user1.setEmail("user1@example.com");
-        user1.setLogin("user1");
-        user1.setBirthday(LocalDate.of(1990, 1, 1));
-        User created1 = userStorage.create(user1);
+        User user1 = userStorage.create(user);
 
         User user2 = new User();
         user2.setEmail("friend@example.com");
         user2.setLogin("friend");
         user2.setBirthday(LocalDate.of(1991, 1, 1));
-        User created2 = userStorage.create(user2);
+        User user2Created = userStorage.create(user2);
 
-        user1.getFriends().add(created2.getId());
-        created2.getFriends().add(user1.getId());
+        user1.getFriends().add(user2Created.getId());
+        user2Created.getFriends().add(user1.getId());
         userStorage.update(user1);
-        userStorage.update(created2);
+        userStorage.update(user2Created);
 
-        mockMvc.perform(delete("/users/" + created1.getId() + "/friends/" + created2.getId()))
+        mockMvc.perform(delete("/users/" + user1.getId() + "/friends/" + user2Created.getId()))
                 .andExpect(status().isOk())
                 .andDo(print());
     }
 
     @Test
     void getFriends_shouldReturnListOfFriends() throws Exception {
-        User user1 = new User();
-        user1.setEmail("user1@example.com");
-        user1.setLogin("user1");
-        user1.setBirthday(LocalDate.of(1990, 1, 1));
-        User created1 = userStorage.create(user1);
+        User user1 = userStorage.create(user);
 
         User user2 = new User();
         user2.setEmail("friend@example.com");
         user2.setLogin("friend");
         user2.setBirthday(LocalDate.of(1991, 1, 1));
-        User created2 = userStorage.create(user2);
+        User user2Created = userStorage.create(user2);
 
-        user1.getFriends().add(created2.getId());
-        created2.getFriends().add(user1.getId());
+        user1.getFriends().add(user2Created.getId());
+        user2Created.getFriends().add(user1.getId());
         userStorage.update(user1);
-        userStorage.update(created2);
+        userStorage.update(user2Created);
 
-        mockMvc.perform(get("/users/" + created1.getId() + "/friends"))
+        mockMvc.perform(get("/users/" + user1.getId() + "/friends"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andDo(print());
@@ -215,31 +186,27 @@ class UserControllerTest {
 
     @Test
     void getCommonFriends_shouldReturnListOfCommonFriends() throws Exception {
-        User user1 = new User();
-        user1.setEmail("user1@example.com");
-        user1.setLogin("user1");
-        user1.setBirthday(LocalDate.of(1990, 1, 1));
-        User created1 = userStorage.create(user1);
+        User user1 = userStorage.create(user);
 
         User user2 = new User();
         user2.setEmail("friend@example.com");
         user2.setLogin("friend");
         user2.setBirthday(LocalDate.of(1991, 1, 1));
-        User created2 = userStorage.create(user2);
+        User user2Created = userStorage.create(user2);
 
         User commonFriend = new User();
         commonFriend.setEmail("common@example.com");
         commonFriend.setLogin("common");
         commonFriend.setBirthday(LocalDate.of(1992, 1, 1));
-        User createdCommon = userStorage.create(commonFriend);
+        User commonFriendCreated = userStorage.create(commonFriend);
 
-        user1.getFriends().add(created2.getId());
-        user1.getFriends().add(createdCommon.getId());
-        created2.getFriends().add(createdCommon.getId());
+        user1.getFriends().add(user2Created.getId());
+        user1.getFriends().add(commonFriendCreated.getId());
+        user2Created.getFriends().add(commonFriendCreated.getId());
         userStorage.update(user1);
-        userStorage.update(created2);
+        userStorage.update(user2Created);
 
-        mockMvc.perform(get("/users/" + created1.getId() + "/friends/common/" + created2.getId()))
+        mockMvc.perform(get("/users/" + user1.getId() + "/friends/common/" + user2Created.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andDo(print());

@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,14 +35,26 @@ class FilmControllerTest {
     @Autowired
     private UserStorage userStorage;
 
-    @Test
-    void createFilm_shouldReturnCreatedFilm() throws Exception {
-        Film film = new Film();
+    private Film film;
+    private User user;
+
+    @BeforeEach
+    void setUp() {
+        film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
 
+        user = new User();
+        user.setEmail("test@example.com");
+        user.setLogin("testuser");
+        user.setName("Test User");
+        user.setBirthday(LocalDate.of(1990, 1, 1));
+    }
+
+    @Test
+    void createFilm_shouldReturnCreatedFilm() throws Exception {
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(film)))
@@ -53,11 +66,7 @@ class FilmControllerTest {
 
     @Test
     void createFilm_withInvalidName_shouldReturnBadRequest() throws Exception {
-        Film film = new Film();
         film.setName("");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,11 +77,7 @@ class FilmControllerTest {
 
     @Test
     void createFilm_withInvalidReleaseDate_shouldReturnBadRequest() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(1800, 1, 1));
-        film.setDuration(120);
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,11 +88,6 @@ class FilmControllerTest {
 
     @Test
     void updateFilm_shouldReturnUpdatedFilm() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         Film created = filmStorage.create(film);
         created.setName("Updated Film");
 
@@ -101,11 +101,6 @@ class FilmControllerTest {
 
     @Test
     void findAllFilms_shouldReturnListOfFilms() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         filmStorage.create(film);
 
         mockMvc.perform(get("/films"))
@@ -117,11 +112,6 @@ class FilmControllerTest {
 
     @Test
     void findById_shouldReturnFilm() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         Film created = filmStorage.create(film);
 
         mockMvc.perform(get("/films/" + created.getId()))
@@ -141,18 +131,7 @@ class FilmControllerTest {
 
     @Test
     void addLike_shouldReturnOk() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
-
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         Film createdFilm = filmStorage.create(film);
 
         mockMvc.perform(put("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
@@ -162,11 +141,6 @@ class FilmControllerTest {
 
     @Test
     void addLike_withNonExistentFilm_shouldReturnNotFound() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
 
         mockMvc.perform(put("/films/999/like/" + createdUser.getId()))
@@ -177,11 +151,6 @@ class FilmControllerTest {
 
     @Test
     void addLike_withNonExistentUser_shouldReturnNotFound() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         Film createdFilm = filmStorage.create(film);
 
         mockMvc.perform(put("/films/" + createdFilm.getId() + "/like/999"))
@@ -192,20 +161,9 @@ class FilmControllerTest {
 
     @Test
     void removeLike_shouldReturnOk() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
-
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
-        film.getLikes().add(createdUser.getId());
         Film createdFilm = filmStorage.create(film);
+        createdFilm.getLikes().add(createdUser.getId());
 
         mockMvc.perform(delete("/films/" + createdFilm.getId() + "/like/" + createdUser.getId()))
                 .andExpect(status().isOk())
@@ -214,11 +172,6 @@ class FilmControllerTest {
 
     @Test
     void removeLike_withNonExistentFilm_shouldReturnNotFound() throws Exception {
-        User user = new User();
-        user.setEmail("test@example.com");
-        user.setLogin("testuser");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(1990, 1, 1));
         User createdUser = userStorage.create(user);
 
         mockMvc.perform(delete("/films/999/like/" + createdUser.getId()))
@@ -229,11 +182,6 @@ class FilmControllerTest {
 
     @Test
     void removeLike_withNonExistentUser_shouldReturnNotFound() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         Film createdFilm = filmStorage.create(film);
 
         mockMvc.perform(delete("/films/" + createdFilm.getId() + "/like/999"))
@@ -244,11 +192,6 @@ class FilmControllerTest {
 
     @Test
     void getPopularFilms_shouldReturnListOfFilms() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         filmStorage.create(film);
 
         mockMvc.perform(get("/films/popular?count=10"))
@@ -259,11 +202,6 @@ class FilmControllerTest {
 
     @Test
     void getPopularFilms_defaultCount_shouldReturnFilms() throws Exception {
-        Film film = new Film();
-        film.setName("Test Film");
-        film.setDescription("Test Description");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
         filmStorage.create(film);
 
         mockMvc.perform(get("/films/popular"))

@@ -19,6 +19,8 @@ import java.util.List;
 public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    
+    private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
 
     public Film create(Film film) {
         validateFilm(film);
@@ -44,7 +46,7 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         film.getLikes().add(userId);
-        filmStorage.update(film);
+        // Не вызываем filmStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -54,7 +56,7 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         film.getLikes().remove(userId);
-        filmStorage.update(film);
+        // Не вызываем filmStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
@@ -66,7 +68,7 @@ public class FilmService {
     }
 
     private void validateFilm(Film film) {
-        if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
     }
