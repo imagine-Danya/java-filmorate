@@ -36,7 +36,7 @@ class FilmDbStorageTest {
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
         film.setMpaRatingId(1L);
-        film.setGenreIds(Set.of(1L, 2L));
+        film.setGenres(Set.of(1L, 2L));  // ИСПРАВЛЕНО: было setGenreIds
     }
 
     @Test
@@ -46,7 +46,7 @@ class FilmDbStorageTest {
         assertThat(created.getId()).isNotNull();
         assertThat(created.getName()).isEqualTo("Test Film");
         assertThat(created.getMpaRatingId()).isEqualTo(1L);
-        assertThat(created.getGenreIds()).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(created.getGenres()).containsExactlyInAnyOrder(1L, 2L);  // ИСПРАВЛЕНО: было getGenreIds
     }
 
     @Test
@@ -71,12 +71,12 @@ class FilmDbStorageTest {
     void testUpdateFilm() {
         Film created = filmStorage.create(film);
         created.setName("Updated Film");
-        created.setGenreIds(Set.of(3L));
+        created.setGenres(Set.of(3L));  // ИСПРАВЛЕНО: было setGenreIds
 
         Film updated = filmStorage.update(created);
 
         assertThat(updated.getName()).isEqualTo("Updated Film");
-        assertThat(updated.getGenreIds()).containsExactlyInAnyOrder(3L);
+        assertThat(updated.getGenres()).containsExactlyInAnyOrder(3L);  // ИСПРАВЛЕНО: было getGenreIds
     }
 
     @Test
@@ -96,7 +96,7 @@ class FilmDbStorageTest {
         film2.setReleaseDate(LocalDate.of(2021, 1, 1));
         film2.setDuration(90);
         film2.setMpaRatingId(2L);
-        film2.setGenreIds(Set.of(3L));
+        film2.setGenres(Set.of(3L));  // ИСПРАВЛЕНО: было setGenreIds
         filmStorage.create(film2);
 
         Collection<Film> films = filmStorage.findAll();
