@@ -1,33 +1,41 @@
 package ru.yandex.practicum.filmorate.service;
-
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.FriendshipDbStorage;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class UserService {
+
     private final UserStorage userStorage;
+    private final FriendshipDbStorage friendshipStorage;
+
+    public UserService(
+            @Qualifier("userDbStorage") UserStorage userStorage,
+            FriendshipDbStorage friendshipStorage) {
+        this.userStorage = userStorage;
+        this.friendshipStorage = friendshipStorage;
+    }
 
     public User create(User user) {
+        log.info("Создание пользователя: {}", user.getLogin());
         return userStorage.create(user);
     }
 
     public User update(User user) {
+        log.info("Обновление пользователя: {}", user.getId());
         return userStorage.update(user);
     }
 
     public User findById(Long id) {
-        return userStorage.findById(id).orElseThrow(() -> new NotFoundException("Пользователь с id " + id + " не найден"));
+        return userStorage.findById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + id + " не найден"));
     }
 
     public List<User> findAll() {
@@ -35,41 +43,27 @@ public class UserService {
     }
 
     public void addFriend(Long userId, Long friendId) {
-        User user = findById(userId);
-        User friend = findById(friendId);
-
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
-
+        findById(userId);
+        findById(friendId);
+        friendshipStorage.addFriend(userId, friendId);
         log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
     }
 
     public void removeFriend(Long userId, Long friendId) {
-        User user = findById(userId);
-        User friend = findById(friendId);
-
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
-
+        findById(userId);
+        findById(friendId);
+        friendshipStorage.removeFriend(userId, friendId);
         log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
     }
 
     public List<User> getFriends(Long userId) {
-        User user = findById(userId);
-        return user.getFriends().stream()
-                .map(this::findById)
-                .collect(Collectors.toList());
+        findById(userId);
+        return friendshipStorage.getFriends(userId);
     }
 
     public List<User> getCommonFriends(Long userId, Long otherId) {
-        User user = findById(userId);
-        User other = findById(otherId);
-
-        Set<Long> commonFriends = new HashSet<>(user.getFriends());
-        commonFriends.retainAll(other.getFriends());
-
-        return commonFriends.stream()
-                .map(this::findById)
-                .collect(Collectors.toList());
+        findById(userId);
+        findById(otherId);
+        return friendshipStorage.getCommonFriends(userId, otherId);
     }
 }
