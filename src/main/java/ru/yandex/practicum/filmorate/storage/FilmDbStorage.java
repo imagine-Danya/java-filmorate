@@ -14,7 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
-@Component
+@Component("filmDbStorage")
 @Slf4j
 @RequiredArgsConstructor
 public class FilmDbStorage implements FilmStorage {
@@ -53,7 +53,8 @@ public class FilmDbStorage implements FilmStorage {
     public Film update(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE film_id = ?";
         int rows = jdbc.update(sql, film.getName(), film.getDescription(),
-                java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(), film.getMpaRatingId(), film.getId());
+                java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(),
+                film.getMpaRatingId(), film.getId());
 
         if (rows == 0) {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");

@@ -9,36 +9,45 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FilmService {
 
-    @Qualifier("filmDbStorage")
-    private final FilmStorage filmStorage;
-
-    @Qualifier("userDbStorage")
-    private final UserStorage userStorage;
-
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
+
+    private final FilmStorage filmStorage;
+    private final UserStorage userStorage;
+    private final LikeDbStorage likeStorage;
+
+    public FilmService(
+            @Qualifier("filmDbStorage") FilmStorage filmStorage,
+            @Qualifier("userDbStorage") UserStorage userStorage,
+            LikeDbStorage likeStorage) {
+        this.filmStorage = filmStorage;
+        this.userStorage = userStorage;
+        this.likeStorage = likeStorage;
+    }
 
     public Film create(Film film) {
         validateFilm(film);
+        log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
     public Film update(Film film) {
         validateFilm(film);
+        log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
 
     public Film findById(Long id) {
-        return filmStorage.findById(id).orElseThrow(() ->
-                new NotFoundException("Фильм с id " + id + " не найден"));
+        return filmStorage.findById(id)
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + id + " не найден"));
     }
 
     public List<Film> findAll() {
@@ -46,33 +55,28 @@ public class FilmService {
     }
 
     public void addLike(Long filmId, Long userId) {
-        Film film = findById(filmId);
-        if (!userStorage.findById(userId).isPresent()) {
+        findById(filmId);
+        if (userStorage.findById(userId).isEmpty()) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-
-        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
-
+        likeStorage.addLike(filmId, userId);
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
     public void removeLike(Long filmId, Long userId) {
-        Film film = findById(filmId);
-        if (!userStorage.findById(userId).isPresent()) {
+        findById(filmId);
+        if (userStorage.findById(userId).isEmpty()) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-
-        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
-
+        likeStorage.removeLike(filmId, userId);
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
     public List<Film> getPopularFilms(int count) {
-        String sql = "SELECT f.*, COUNT(l.user_id) AS likes_count " +
-                "FROM films f LEFT JOIN likes l ON f.film_id = l.film_id " +
-                "GROUP BY f.film_id ORDER BY likes_count DESC LIMIT ?";
-
-        return List.of();
+        if (count < 0) {
+            throw new ValidationException("Параметр count не может быть отрицательным");
+        }
+        return likeStorage.getPopularFilms(count);
     }
 
     private void validateFilm(Film film) {

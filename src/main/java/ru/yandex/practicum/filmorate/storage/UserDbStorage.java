@@ -11,12 +11,11 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-@Component
+@Component("userDbStorage")
 @Slf4j
 @RequiredArgsConstructor
 public class UserDbStorage implements UserStorage {
@@ -26,10 +25,10 @@ public class UserDbStorage implements UserStorage {
     @Override
     public User create(User user) {
         String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
-
         KeyHolder keyHolder = new GeneratedKeyHolder();
+
         jdbc.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = connection.prepareStatement(sql, new String[]{"user_id"});
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
             ps.setString(3, user.getName());
@@ -37,8 +36,10 @@ public class UserDbStorage implements UserStorage {
             return ps;
         }, keyHolder);
 
-        Long id = keyHolder.getKey().longValue();
-        user.setId(id);
+        Number key = keyHolder.getKey();
+        if (key != null) {
+            user.setId(key.longValue());
+        }
 
         log.debug("Пользователь создан в БД: {}", user);
         return user;
@@ -48,7 +49,7 @@ public class UserDbStorage implements UserStorage {
     public User update(User user) {
         String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
         int rows = jdbc.update(sql, user.getEmail(), user.getLogin(), user.getName(),
-                user.getBirthday(), user.getId());
+                java.sql.Date.valueOf(user.getBirthday()), user.getId());
 
         if (rows == 0) {
             throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
