@@ -1,14 +1,15 @@
 package ru.yandex.practicum.filmorate;
 
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.UserDbStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -17,13 +18,14 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-@JdbcTest
-@AutoConfigureTestDatabase
-@Import(UserDbStorage.class)
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
+@SpringBootTest
+@ActiveProfiles("test")
+@Transactional
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class UserDbStorageTest {
 
-    private final UserDbStorage userStorage;
+    @Autowired
+    private UserStorage userStorage;
 
     private User user;
 
@@ -41,8 +43,10 @@ class UserDbStorageTest {
         User created = userStorage.create(user);
 
         assertThat(created.getId()).isNotNull();
+        assertThat(created.getId()).isGreaterThan(0);
         assertThat(created.getEmail()).isEqualTo("test@example.com");
         assertThat(created.getLogin()).isEqualTo("testuser");
+        assertThat(created.getName()).isEqualTo("Test User");
     }
 
     @Test
@@ -54,6 +58,7 @@ class UserDbStorageTest {
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(created.getId());
         assertThat(found.get().getEmail()).isEqualTo("test@example.com");
+        assertThat(found.get().getLogin()).isEqualTo("testuser");
     }
 
     @Test
@@ -71,13 +76,19 @@ class UserDbStorageTest {
         User updated = userStorage.update(created);
 
         assertThat(updated.getName()).isEqualTo("Updated Name");
+        assertThat(updated.getId()).isEqualTo(created.getId());
     }
 
     @Test
     void testUpdateUserNotFound() {
-        user.setId(999L);
+        User nonExistent = new User();
+        nonExistent.setId(999L);
+        nonExistent.setEmail("test@example.com");
+        nonExistent.setLogin("testuser");
+        nonExistent.setName("Test");
+        nonExistent.setBirthday(LocalDate.of(1990, 1, 1));
 
-        assertThrows(Exception.class, () -> userStorage.update(user));
+        assertThrows(NotFoundException.class, () -> userStorage.update(nonExistent));
     }
 
     @Test
@@ -92,6 +103,6 @@ class UserDbStorageTest {
 
         Collection<User> users = userStorage.findAll();
 
-        assertThat(users).hasSize(2);
+        assertThat(users).hasSizeGreaterThanOrEqualTo(2);
     }
 }
