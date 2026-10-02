@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS film_genres (
 CREATE TABLE IF NOT EXISTS friendships (
     user_id   BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     friend_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    status    VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     PRIMARY KEY (user_id, friend_id),
     CHECK (user_id <> friend_id)
 );
