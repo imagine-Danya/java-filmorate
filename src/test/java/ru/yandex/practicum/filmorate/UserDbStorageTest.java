@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class UserDbStorageTest {
 
     @Autowired
+    @Qualifier("userDbStorage")
     private UserStorage userStorage;
 
     private User user;
