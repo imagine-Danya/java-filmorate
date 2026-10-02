@@ -1,12 +1,15 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
 
@@ -14,6 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class FilmService {
 
@@ -22,24 +26,21 @@ public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
     private final LikeDbStorage likeStorage;
-
-    public FilmService(
-            @Qualifier("filmDbStorage") FilmStorage filmStorage,
-            @Qualifier("userDbStorage") UserStorage userStorage,
-            LikeDbStorage likeStorage) {
-        this.filmStorage = filmStorage;
-        this.userStorage = userStorage;
-        this.likeStorage = likeStorage;
-    }
+    private final MpaRatingDbStorage mpaRatingDbStorage;
+    private final GenreDbStorage genreDbStorage;
 
     public Film create(Film film) {
         validateFilm(film);
+        validateMpa(film);
+        validateGenres(film);
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
     public Film update(Film film) {
         validateFilm(film);
+        validateMpa(film);
+        validateGenres(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
@@ -81,6 +82,25 @@ public class FilmService {
     private void validateFilm(Film film) {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
+    }
+
+    private void validateMpa(Film film) {
+        if (film.getMpa() == null || film.getMpa().getId() == null) {
+            throw new NotFoundException("MPA рейтинг не указан");
+        }
+        if (mpaRatingDbStorage.findById(film.getMpa().getId()).isEmpty()) {
+            throw new NotFoundException("MPA рейтинг с id " + film.getMpa().getId() + " не найден");
+        }
+    }
+
+    private void validateGenres(Film film) {
+        if (film.getGenres() != null) {
+            for (Genre genre : film.getGenres()) {
+                if (genre.getId() != null && genreDbStorage.findById(genre.getId()).isEmpty()) {
+                    throw new NotFoundException("Жанр с id " + genre.getId() + " не найден");
+                }
+            }
         }
     }
 }
