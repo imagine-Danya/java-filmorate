@@ -45,7 +45,6 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         film.getLikes().add(userId);
-        // Не вызываем filmStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -55,7 +54,6 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         film.getLikes().remove(userId);
-        // Не вызываем filmStorage.update(), так как работаем со ссылкой на объект в памяти
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
