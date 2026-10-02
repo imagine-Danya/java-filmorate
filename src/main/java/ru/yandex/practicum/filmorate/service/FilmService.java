@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
@@ -17,8 +18,13 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class FilmService {
+
+    @Qualifier("filmDbStorage")
     private final FilmStorage filmStorage;
+
+    @Qualifier("userDbStorage")
     private final UserStorage userStorage;
+
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
 
     public Film create(Film film) {
@@ -32,7 +38,8 @@ public class FilmService {
     }
 
     public Film findById(Long id) {
-        return filmStorage.findById(id).orElseThrow(() -> new NotFoundException("Фильм с id " + id + " не найден"));
+        return filmStorage.findById(id).orElseThrow(() ->
+                new NotFoundException("Фильм с id " + id + " не найден"));
     }
 
     public List<Film> findAll() {
@@ -44,7 +51,9 @@ public class FilmService {
         if (!userStorage.findById(userId).isPresent()) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-        film.getLikes().add(userId);
+
+        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
+
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -53,15 +62,18 @@ public class FilmService {
         if (!userStorage.findById(userId).isPresent()) {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
-        film.getLikes().remove(userId);
+
+        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
+
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
     public List<Film> getPopularFilms(int count) {
-        return filmStorage.findAll().stream()
-                .sorted(Comparator.comparingInt((Film f) -> f.getLikes().size()).reversed())
-                .limit(count)
-                .toList();
+        String sql = "SELECT f.*, COUNT(l.user_id) AS likes_count " +
+                "FROM films f LEFT JOIN likes l ON f.film_id = l.film_id " +
+                "GROUP BY f.film_id ORDER BY likes_count DESC LIMIT ?";
+
+        return List.of();
     }
 
     private void validateFilm(Film film) {
