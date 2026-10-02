@@ -44,7 +44,9 @@ public class LikeDbStorage {
         film.setDescription(rs.getString("description"));
         film.setReleaseDate(rs.getDate("release_date").toLocalDate());
         film.setDuration(rs.getInt("duration"));
-        film.setMpaRatingId(rs.getLong("mpa_rating_id"));
+        ru.yandex.practicum.filmorate.model.MpaRating mpa = new ru.yandex.practicum.filmorate.model.MpaRating();
+        mpa.setId(rs.getLong("mpa_rating_id"));
+        film.setMpa(mpa);
         return film;
     };
 }

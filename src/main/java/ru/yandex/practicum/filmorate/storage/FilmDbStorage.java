@@ -9,6 +9,10 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.MpaRating;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -20,6 +24,8 @@ import java.util.*;
 public class FilmDbStorage implements FilmStorage {
 
     private final JdbcTemplate jdbc;
+    private final MpaRatingDbStorage mpaRatingDbStorage;
+    private final GenreDbStorage genreDbStorage;
 
     @Override
     public Film create(Film film) {
@@ -32,7 +38,7 @@ public class FilmDbStorage implements FilmStorage {
             ps.setString(2, film.getDescription());
             ps.setDate(3, java.sql.Date.valueOf(film.getReleaseDate()));
             ps.setInt(4, film.getDuration());
-            ps.setLong(5, film.getMpaRatingId());
+            ps.setLong(5, film.getMpa().getId());
             return ps;
         }, keyHolder);
 
@@ -54,7 +60,7 @@ public class FilmDbStorage implements FilmStorage {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE film_id = ?";
         int rows = jdbc.update(sql, film.getName(), film.getDescription(),
                 java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(),
-                film.getMpaRatingId(), film.getId());
+                film.getMpa().getId(), film.getId());
 
         if (rows == 0) {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
@@ -79,7 +85,8 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         Film film = films.get(0);
-        film.setGenres(getGenres(film.getId()));
+        film.setMpa(loadMpa(film.getMpa().getId()));
+        film.setGenres(loadGenres(film.getId()));
 
         return Optional.of(film);
     }
@@ -89,20 +96,31 @@ public class FilmDbStorage implements FilmStorage {
         String sql = "SELECT film_id, name, description, release_date, duration, mpa_rating_id FROM films";
         List<Film> films = jdbc.query(sql, filmMapper);
 
-        films.forEach(film -> film.setGenres(getGenres(film.getId())));
+        films.forEach(film -> {
+            film.setMpa(loadMpa(film.getMpa().getId()));
+            film.setGenres(loadGenres(film.getId()));
+        });
 
         return films;
     }
 
-    private void saveGenres(Long filmId, Collection<Long> genreIds) {
+    private void saveGenres(Long filmId, Set<Genre> genres) {
         String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
-        genreIds.forEach(genreId -> jdbc.update(sql, filmId, genreId));
+        genres.forEach(genre -> jdbc.update(sql, filmId, genre.getId()));
     }
 
-    private Set<Long> getGenres(Long filmId) {
+    private MpaRating loadMpa(Long mpaRatingId) {
+        return mpaRatingDbStorage.findById(mpaRatingId).orElse(null);
+    }
+
+    private Set<Genre> loadGenres(Long filmId) {
         String sql = "SELECT genre_id FROM film_genres WHERE film_id = ?";
-        List<Long> genreIdsList = jdbc.queryForList(sql, Long.class, filmId);
-        return new HashSet<>(genreIdsList);
+        List<Long> genreIds = jdbc.queryForList(sql, Long.class, filmId);
+        Set<Genre> genres = new HashSet<>();
+        for (Long genreId : genreIds) {
+            genreDbStorage.findById(genreId).ifPresent(genres::add);
+        }
+        return genres;
     }
 
     private final RowMapper<Film> filmMapper = (ResultSet rs, int rowNum) -> {
@@ -112,7 +130,9 @@ public class FilmDbStorage implements FilmStorage {
         film.setDescription(rs.getString("description"));
         film.setReleaseDate(rs.getDate("release_date").toLocalDate());
         film.setDuration(rs.getInt("duration"));
-        film.setMpaRatingId(rs.getLong("mpa_rating_id"));
+        MpaRating mpa = new MpaRating();
+        mpa.setId(rs.getLong("mpa_rating_id"));
+        film.setMpa(mpa);
         return film;
     };
 }
