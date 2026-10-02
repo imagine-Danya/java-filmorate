@@ -41,8 +41,8 @@ public class FilmDbStorage implements FilmStorage {
             film.setId(key.longValue());
         }
 
-        if (film.getGenreIds() != null && !film.getGenreIds().isEmpty()) {
-            saveGenres(film.getId(), film.getGenreIds());
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            saveGenres(film.getId(), film.getGenres());
         }
 
         log.debug("Фильм создан в БД: {}", film);
@@ -61,8 +61,8 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         jdbc.update("DELETE FROM film_genres WHERE film_id = ?", film.getId());
-        if (film.getGenreIds() != null && !film.getGenreIds().isEmpty()) {
-            saveGenres(film.getId(), film.getGenreIds());
+        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+            saveGenres(film.getId(), film.getGenres());
         }
 
         log.debug("Фильм обновлен в БД: {}", film);
@@ -79,7 +79,7 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         Film film = films.get(0);
-        film.setGenreIds(getGenreIds(film.getId()));
+        film.setGenres(getGenres(film.getId()));
 
         return Optional.of(film);
     }
@@ -89,7 +89,7 @@ public class FilmDbStorage implements FilmStorage {
         String sql = "SELECT film_id, name, description, release_date, duration, mpa_rating_id FROM films";
         List<Film> films = jdbc.query(sql, filmMapper);
 
-        films.forEach(film -> film.setGenreIds(getGenreIds(film.getId())));
+        films.forEach(film -> film.setGenres(getGenres(film.getId())));
 
         return films;
     }
@@ -99,7 +99,7 @@ public class FilmDbStorage implements FilmStorage {
         genreIds.forEach(genreId -> jdbc.update(sql, filmId, genreId));
     }
 
-    private Set<Long> getGenreIds(Long filmId) {
+    private Set<Long> getGenres(Long filmId) {
         String sql = "SELECT genre_id FROM film_genres WHERE film_id = ?";
         List<Long> genreIdsList = jdbc.queryForList(sql, Long.class, filmId);
         return new HashSet<>(genreIdsList);
