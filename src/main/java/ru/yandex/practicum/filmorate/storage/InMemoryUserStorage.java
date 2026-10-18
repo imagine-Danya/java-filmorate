@@ -11,9 +11,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Component
+@Component("inMemoryUserStorage")
 @Slf4j
 public class InMemoryUserStorage implements UserStorage {
+
     private final Map<Long, User> users = new HashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
@@ -22,7 +23,7 @@ public class InMemoryUserStorage implements UserStorage {
         Long id = idGenerator.getAndIncrement();
         user.setId(id);
         users.put(id, user);
-        log.debug("Пользователь создан: {}", user);
+        log.debug("Пользователь создан в памяти: {}", user);
         return user;
     }
 
@@ -32,7 +33,7 @@ public class InMemoryUserStorage implements UserStorage {
             throw new NotFoundException("Пользователь с id " + user.getId() + " не найден");
         }
         users.put(user.getId(), user);
-        log.debug("Пользователь обновлен: {}", user);
+        log.debug("Пользователь обновлен в памяти: {}", user);
         return user;
     }
 

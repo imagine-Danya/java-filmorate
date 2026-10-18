@@ -11,9 +11,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Component
+@Component("inMemoryFilmStorage")
 @Slf4j
 public class InMemoryFilmStorage implements FilmStorage {
+
     private final Map<Long, Film> films = new HashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
@@ -22,7 +23,7 @@ public class InMemoryFilmStorage implements FilmStorage {
         Long id = idGenerator.getAndIncrement();
         film.setId(id);
         films.put(id, film);
-        log.debug("Фильм создан: {}", film);
+        log.debug("Фильм создан в памяти: {}", film);
         return film;
     }
 
@@ -32,7 +33,7 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
         }
         films.put(film.getId(), film);
-        log.debug("Фильм обновлен: {}", film);
+        log.debug("Фильм обновлен в памяти: {}", film);
         return film;
     }
 
