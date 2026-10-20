@@ -9,12 +9,10 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -29,6 +27,7 @@ public class FilmDbStorage implements FilmStorage {
     private final JdbcTemplate jdbc;
     private final MpaRatingDbStorage mpaRatingDbStorage;
     private final GenreDbStorage genreDbStorage;
+    private final DirectorStorage directorStorage;
 
     @Override
     public Film create(Film film) {
@@ -54,6 +53,10 @@ public class FilmDbStorage implements FilmStorage {
             saveGenres(film.getId(), film.getGenres());
         }
 
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            saveDirectors(film.getId(), film.getDirectors());
+        }
+
         log.debug("Фильм создан в БД: {}", film);
         return film;
     }
@@ -61,6 +64,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film update(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE film_id = ?";
+        String deleteDirector = "DELETE FROM film_directors WHERE film_id = ?";
         int rows = jdbc.update(sql, film.getName(), film.getDescription(),
                 java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(),
                 film.getMpa().getId(), film.getId());
@@ -72,6 +76,11 @@ public class FilmDbStorage implements FilmStorage {
         jdbc.update("DELETE FROM film_genres WHERE film_id = ?", film.getId());
         if (film.getGenres() != null && !film.getGenres().isEmpty()) {
             saveGenres(film.getId(), film.getGenres());
+        }
+
+        jdbc.update(deleteDirector, film.getId());
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            saveDirectors(film.getId(), film.getDirectors());
         }
 
         log.debug("Фильм обновлен в БД: {}", film);
@@ -90,7 +99,7 @@ public class FilmDbStorage implements FilmStorage {
         Film film = films.get(0);
         film.setMpa(loadMpa(film.getMpa().getId()));
         film.setGenres(loadGenres(film.getId()));
-
+        film.setDirectors(loadDirectors(film.getId()));
         return Optional.of(film);
     }
 
@@ -102,6 +111,7 @@ public class FilmDbStorage implements FilmStorage {
         films.forEach(film -> {
             film.setMpa(loadMpa(film.getMpa().getId()));
             film.setGenres(loadGenres(film.getId()));
+            film.setDirectors(loadDirectors(film.getId()));
         });
 
         return films;
@@ -138,4 +148,21 @@ public class FilmDbStorage implements FilmStorage {
         film.setMpa(mpa);
         return film;
     };
+
+    private void saveDirectors(Long filmId, Set<Director> directors) {
+        String sql = "INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)";
+        directors.forEach(director ->
+                jdbc.update(sql, filmId, director.getId()));
+    }
+
+    private Set<Director> loadDirectors(Long filmId) {
+        String sql = "SELECT director_id FROM film_directors WHERE film_id = ?";
+        List<Long> directorIds = jdbc.queryForList(
+                sql, Long.class, filmId);
+        Set<Director> directors = new HashSet<>();
+        for (Long directorId : directorIds) {
+            directorStorage.findById(directorId).ifPresent(directors::add);
+        }
+        return directors;
+    }
 }

@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS genres (
     name     VARCHAR(100) NOT NULL UNIQUE
 );
 
+CREATE TABLE IF NOT EXISTS directors (
+    director_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name        VARCHAR(255) NOT NULL,
+    surname     VARCHAR(255) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS films (
     film_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name          VARCHAR(255) NOT NULL,
@@ -30,6 +36,12 @@ CREATE TABLE IF NOT EXISTS film_genres (
     film_id  BIGINT NOT NULL REFERENCES films(film_id) ON DELETE CASCADE,
     genre_id BIGINT NOT NULL REFERENCES genres(genre_id),
     PRIMARY KEY (film_id, genre_id)
+);
+
+CREATE TABLE IF NOT EXISTS film_directors (
+    film_id     BIGINT NOT NULL REFERENCES films(film_id) ON DELETE CASCADE,
+    director_id BIGINT NOT NULL REFERENCES directors(director_id) ON DELETE CASCADE,
+    PRIMARY KEY (film_id, director_id)
 );
 
 CREATE TABLE IF NOT EXISTS friendships (
@@ -48,4 +60,5 @@ CREATE TABLE IF NOT EXISTS likes (
 ALTER TABLE users ALTER COLUMN user_id RESTART WITH 1;
 ALTER TABLE mpa_ratings ALTER COLUMN mpa_rating_id RESTART WITH 1;
 ALTER TABLE genres ALTER COLUMN genre_id RESTART WITH 1;
+ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 1;
 ALTER TABLE films ALTER COLUMN film_id RESTART WITH 1;

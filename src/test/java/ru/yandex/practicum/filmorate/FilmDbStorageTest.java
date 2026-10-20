@@ -9,9 +9,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
+import ru.yandex.practicum.filmorate.storage.DirectorStorage;
 import ru.yandex.practicum.filmorate.storage.FilmDbStorage;
 
 import java.time.LocalDate;
@@ -33,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FilmDbStorageTest {
 
     private final FilmDbStorage filmStorage;
+    private final DirectorStorage directorStorage;
 
     private Film film;
 
@@ -152,5 +155,104 @@ class FilmDbStorageTest {
         Collection<Film> films = filmStorage.findAll();
 
         assertThat(films).hasSize(2);
+    }
+
+    @Test
+    void testCreateFilmWithDirectors() {
+        Director nolan = createDirector("Кристофер", "Нолан");
+        Director fincher = createDirector("Дэвид", "Финчер");
+
+        Set<Director> directors = new HashSet<>();
+        directors.add(nolan);
+        directors.add(fincher);
+        film.setDirectors(directors);
+
+        Film created = filmStorage.create(film);
+
+        assertThat(created.getDirectors()).hasSize(2);
+        Set<Long> directorIds = created.getDirectors().stream()
+                .map(Director::getId)
+                .collect(Collectors.toSet());
+        assertThat(directorIds).containsExactlyInAnyOrder(nolan.getId(), fincher.getId());
+    }
+
+    @Test
+    void testCreateFilmWithoutDirectors() {
+        film.setDirectors(new HashSet<>());
+
+        Film created = filmStorage.create(film);
+
+        assertThat(created.getDirectors()).isNotNull();
+        assertThat(created.getDirectors()).isEmpty();
+    }
+
+    @Test
+    void testFindFilmByIdReturnsDirectors() {
+        Director nolan = createDirector("Кристофер", "Нолан");
+        Set<Director> directors = new HashSet<>();
+        directors.add(nolan);
+        film.setDirectors(directors);
+
+        Film created = filmStorage.create(film);
+
+        Optional<Film> found = filmStorage.findById(created.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getDirectors()).hasSize(1);
+
+        Director foundDirector = found.get().getDirectors().iterator().next();
+        assertThat(foundDirector.getId()).isEqualTo(nolan.getId());
+        assertThat(foundDirector.getName()).isEqualTo("Кристофер");
+        assertThat(foundDirector.getSurname()).isEqualTo("Нолан");
+    }
+
+    @Test
+    void testUpdateFilmReplacesDirectors() {
+        Director nolan = createDirector("Кристофер", "Нолан");
+        Director fincher = createDirector("Дэвид", "Финчер");
+
+        Set<Director> initialDirectors = new HashSet<>();
+        initialDirectors.add(nolan);
+        film.setDirectors(initialDirectors);
+
+        Film created = filmStorage.create(film);
+
+        Set<Director> newDirectors = new HashSet<>();
+        newDirectors.add(fincher);
+        created.setDirectors(newDirectors);
+
+        filmStorage.update(created);
+
+        Optional<Film> found = filmStorage.findById(created.getId());
+        assertThat(found).isPresent();
+
+        Set<Long> directorIds = found.get().getDirectors().stream()
+                .map(Director::getId)
+                .collect(Collectors.toSet());
+        assertThat(directorIds).containsExactly(fincher.getId());
+    }
+
+    @Test
+    void testUpdateFilmClearsDirectors() {
+        Director nolan = createDirector("Кристофер", "Нолан");
+        Set<Director> directors = new HashSet<>();
+        directors.add(nolan);
+        film.setDirectors(directors);
+
+        Film created = filmStorage.create(film);
+
+        created.setDirectors(new HashSet<>());
+        filmStorage.update(created);
+
+        Optional<Film> found = filmStorage.findById(created.getId());
+        assertThat(found).isPresent();
+        assertThat(found.get().getDirectors()).isEmpty();
+    }
+
+    private Director createDirector(String name, String surname) {
+        Director director = new Director();
+        director.setName(name);
+        director.setSurname(surname);
+        return directorStorage.create(director);
     }
 }

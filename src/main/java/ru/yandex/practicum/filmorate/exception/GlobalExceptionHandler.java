@@ -42,4 +42,22 @@ public class GlobalExceptionHandler {
         );
         return errors;
     }
+
+    @ExceptionHandler(ConflictException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleConflictException(ConflictException ex) {
+        log.error("Конфликт: {}", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return error;
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map<String, String> handleAll(Exception ex) {
+        log.error("Непредвиденная ошибка", ex);
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "Внутренняя ошибка сервера");
+        return error;
+    }
 }
