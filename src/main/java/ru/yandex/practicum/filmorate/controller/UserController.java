@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 
@@ -62,5 +64,23 @@ public class UserController {
     public List<User> getCommonFriends(@PathVariable Long id, @PathVariable Long otherId) {
         log.info("GET /users/{}/friends/common/{}: получение общих друзей", id, otherId);
         return userService.getCommonFriends(id, otherId);
+    }
+
+    @GetMapping("/{id}/films/common/{otherId}")
+    public List<Film> findCommonFilms(@PathVariable Long id, @PathVariable Long otherId) {
+        if (id < 0 | otherId<0 ) {
+            throw new ValidationException( "Айди пользователя не может быть отрицательным");
+        }
+        log.info("GET /users/{}/films/common/{}: получение общих фильмов", id, otherId);
+        return userService.findCommonFilms(id, otherId);
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public List<Film> findRecommendations(@PathVariable Long id) {
+        if (id < 0 ) {
+            throw new ValidationException( "Айди пользователя не может быть отрицательным");
+        }
+        log.info("GET /users/{}/recommendations: получение рекомендуемых фильмов", id);
+        return userService.findRecommendations(id);
     }
 }

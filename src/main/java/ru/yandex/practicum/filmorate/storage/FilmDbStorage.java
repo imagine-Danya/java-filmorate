@@ -117,6 +117,72 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+    @Override
+    public List<Film> findFilmsByName(String search) {
+        String sql = "SELECT film_id, name, description, release_date, duration, mpa_rating_id " +
+                "FROM films WHERE LOWER(name) LIKE LOWER(?)";
+        String searchPattern = "%" + search + "%";
+
+        List<Film> films = jdbc.query(sql, filmMapper, searchPattern);
+
+        films.forEach(film -> {
+            film.setMpa(loadMpa(film.getMpa().getId()));
+            film.setGenres(loadGenres(film.getId()));
+            film.setDirectors(loadDirectors(film.getId()));
+        });
+
+        return films;
+    }
+
+    @Override
+    public List<Film> findCommonFilms(Long firstId, Long secondId) {
+        String forLikes = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
+                "FROM films f " +
+                "JOIN ( " +
+                "    SELECT film_id FROM likes " +
+                "    WHERE user_id IN (?, ?) " +
+                "    GROUP BY film_id HAVING COUNT(user_id) = 2 " +
+                ") AS common ON f.film_id = common.film_id";
+
+        List<Film> films = jdbc.query(forLikes, filmMapper, firstId, secondId);
+
+        films.forEach(film -> {
+            film.setMpa(loadMpa(film.getMpa().getId()));
+            film.setGenres(loadGenres(film.getId()));
+            film.setDirectors(loadDirectors(film.getId()));
+        });
+        return films;
+    }
+
+    @Override
+    public List<Film> findRecommendations(Long userId) {
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
+                "FROM films AS f " +
+                "JOIN likes AS d ON f.film_id = d.film_id " +
+                "WHERE f.film_id IN ( " +
+                "    SELECT c.film_id FROM likes AS c WHERE c.user_id IN ( " +
+                "        SELECT b.user_id FROM likes AS b WHERE b.film_id IN ( " +
+                "            SELECT a.film_id FROM likes AS a WHERE a.user_id = ? " +
+                "        ) " +
+                "    ) " +
+                ") " +
+                "AND d.user_id != ? " +
+                "AND f.film_id NOT IN ( " +
+                "    SELECT film_id FROM likes WHERE user_id = ? " +
+                ") " +
+                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
+                "ORDER BY COUNT(d.user_id) DESC " +
+                "LIMIT 10";
+
+        List<Film> films = jdbc.query(sql, filmMapper, userId, userId, userId);
+        films.forEach(film -> {
+            film.setMpa(loadMpa(film.getMpa().getId()));
+            film.setGenres(loadGenres(film.getId()));
+            film.setDirectors(loadDirectors(film.getId()));
+        });
+        return films;
+    }
+
     private void saveGenres(Long filmId, Set<Genre> genres) {
         String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
         genres.forEach(genre -> jdbc.update(sql, filmId, genre.getId()));

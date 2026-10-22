@@ -61,4 +61,10 @@ public class FilmController {
         log.info("GET /films/popular?count={}: получение популярных фильмов", count);
         return filmService.getPopularFilms(count);
     }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(@RequestParam String query) {
+        log.info("GET /films/search?query={}: поиск фильмов", query);
+        return filmService.findByName(query);
+    }
 }

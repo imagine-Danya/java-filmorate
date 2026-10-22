@@ -116,4 +116,12 @@ public class FilmService {
             }
         }
     }
+
+    public List<Film> findByName(String search) {
+        List<Film> films = List.copyOf(filmStorage.findFilmsByName(search));
+        if (films.isEmpty()) {
+            throw new NotFoundException("Фильмы по запросу '" + search + "' не найдены");
+        }
+        return films;
+    }
 }
