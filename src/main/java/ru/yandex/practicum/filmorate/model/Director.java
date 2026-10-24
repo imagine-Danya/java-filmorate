@@ -8,6 +8,5 @@ public class Director {
     private Long id;
     @NotBlank
     private String name;
-    @NotBlank
     private String surname;
 }
