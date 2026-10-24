@@ -12,9 +12,6 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -76,6 +73,17 @@ public class FilmDbStorage implements FilmStorage {
 
         log.debug("Фильм обновлен в БД: {}", film);
         return film;
+    }
+
+    @Override
+    public void delete(Long id) {
+        jdbc.update("DELETE FROM film_genres WHERE film_id = ?", id);
+        String sql = "DELETE FROM films WHERE film_id = ?";
+        int rows = jdbc.update(sql, id);
+        if (rows == 0) {
+            throw new NotFoundException("Фильм с id " + id + " не найден");
+        }
+        log.debug("Фильм удален из БД: id={}", id);
     }
 
     @Override

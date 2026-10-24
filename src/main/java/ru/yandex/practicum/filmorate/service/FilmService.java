@@ -8,10 +8,10 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -43,6 +43,11 @@ public class FilmService {
         validateGenres(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
+    }
+
+    public void delete(Long id) {
+        log.info("Удаление фильма: {}", id);
+        filmStorage.delete(id);
     }
 
     public Film findById(Long id) {
