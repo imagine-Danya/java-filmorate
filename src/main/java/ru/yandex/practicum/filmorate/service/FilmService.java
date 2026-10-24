@@ -79,6 +79,13 @@ public class FilmService {
         return likeStorage.getPopularFilms(count);
     }
 
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        if (!sortBy.equals("year") && !sortBy.equals("likes")) {
+            throw new ValidationException("Параметр sortBy должен быть 'year' или 'likes'");
+        }
+        return filmStorage.getFilmsByDirectorId(directorId, sortBy);
+    }
+
     private void validateFilm(Film film) {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
