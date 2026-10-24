@@ -59,8 +59,5 @@ public class DirectorService {
         if (director.getName() == null || director.getName().isBlank()) {
             throw new ValidationException("Имя режиссёра не может быть пустым");
         }
-        if (director.getSurname() == null || director.getSurname().isBlank()) {
-            throw new ValidationException("Фамилия режиссёра не может быть пустой");
-        }
     }
 }
