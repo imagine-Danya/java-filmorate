@@ -186,6 +186,7 @@ public class FilmDbStorage implements FilmStorage {
 
         return films;
     }
+
     private void saveGenres(Long filmId, Set<Genre> genres) {
         String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
         genres.forEach(genre -> jdbc.update(sql, filmId, genre.getId()));
