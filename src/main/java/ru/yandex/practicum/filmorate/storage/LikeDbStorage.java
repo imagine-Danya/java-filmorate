@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.MpaRating;
 
 import java.util.List;
 
@@ -28,13 +29,42 @@ public class LikeDbStorage {
         log.debug("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "FROM films f LEFT JOIN likes l ON f.film_id = l.film_id " +
-                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "ORDER BY COUNT(l.user_id) DESC " +
-                "LIMIT ?";
-        return jdbc.query(sql, filmMapper, count);
+    public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
+        StringBuilder sql = new StringBuilder();
+        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")
+                .append("FROM films f ")
+                .append("LEFT JOIN likes l ON f.film_id = l.film_id ");
+
+        if (genreId != null) {
+            sql.append("JOIN film_genres fg ON f.film_id = fg.film_id ");
+        }
+
+        sql.append("WHERE 1=1 ");
+
+        if (genreId != null) {
+            sql.append("AND fg.genre_id = ? ");
+        }
+
+        if (year != null) {
+            sql.append("AND EXTRACT(YEAR FROM f.release_date) = ? ");
+        }
+
+        sql.append("GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")
+                .append("ORDER BY COUNT(l.user_id) DESC ")
+                .append("LIMIT ?");
+
+        Object[] params;
+        if (genreId != null && year != null) {
+            params = new Object[]{genreId, year, count};
+        } else if (genreId != null) {
+            params = new Object[]{genreId, count};
+        } else if (year != null) {
+            params = new Object[]{year, count};
+        } else {
+            params = new Object[]{count};
+        }
+
+        return jdbc.query(sql.toString(), filmMapper, params);
     }
 
     private final RowMapper<Film> filmMapper = (rs, rowNum) -> {
@@ -44,7 +74,7 @@ public class LikeDbStorage {
         film.setDescription(rs.getString("description"));
         film.setReleaseDate(rs.getDate("release_date").toLocalDate());
         film.setDuration(rs.getInt("duration"));
-        ru.yandex.practicum.filmorate.model.MpaRating mpa = new ru.yandex.practicum.filmorate.model.MpaRating();
+        MpaRating mpa = new MpaRating();
         mpa.setId(rs.getLong("mpa_rating_id"));
         film.setMpa(mpa);
         return film;

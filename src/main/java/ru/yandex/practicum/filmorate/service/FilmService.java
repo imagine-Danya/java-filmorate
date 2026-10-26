@@ -8,7 +8,11 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.*;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -45,6 +49,11 @@ public class FilmService {
         return filmStorage.update(film);
     }
 
+    public void delete(Long id) {
+        log.info("Удаление фильма: {}", id);
+        filmStorage.delete(id);
+    }
+
     public Film findById(Long id) {
         return filmStorage.findById(id)
                 .orElseThrow(() -> new NotFoundException("Фильм с id " + id + " не найден"));
@@ -72,11 +81,12 @@ public class FilmService {
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
+    public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         if (count < 0) {
             throw new ValidationException("Параметр count не может быть отрицательным");
         }
-        return likeStorage.getPopularFilms(count);
+        log.info("Получение популярных фильмов: count={}, genreId={}, year={}", count, genreId, year);
+        return likeStorage.getPopularFilms(count, genreId, year);
     }
 
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {

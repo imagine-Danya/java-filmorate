@@ -35,6 +35,15 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public void delete(Long id) {
+        if (id == null || !films.containsKey(id)) {
+            throw new NotFoundException("Фильм с id " + id + " не найден");
+        }
+        films.remove(id);
+        log.debug("Фильм удален из памяти: id={}", id);
+    }
+
+    @Override
     public Optional<Film> findById(Long id) {
         return Optional.ofNullable(films.get(id));
     }
