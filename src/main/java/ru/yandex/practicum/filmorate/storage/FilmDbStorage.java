@@ -106,9 +106,7 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         Film film = films.get(0);
-        film.setMpa(loadMpa(film.getMpa().getId()));
-        film.setGenres(loadGenres(film.getId()));
-        film.setDirectors(loadDirectors(film.getId()));
+        enrichFilm(film);
 
         return Optional.of(film);
     }
@@ -117,12 +115,7 @@ public class FilmDbStorage implements FilmStorage {
     public Collection<Film> findAll() {
         String sql = "SELECT film_id, name, description, release_date, duration, mpa_rating_id FROM films";
         List<Film> films = jdbc.query(sql, filmMapper);
-
-        films.forEach(film -> {
-            film.setMpa(loadMpa(film.getMpa().getId()));
-            film.setGenres(loadGenres(film.getId()));
-            film.setDirectors(loadDirectors(film.getId()));
-        });
+        enrichFilms(films);
 
         return films;
     }
@@ -144,12 +137,33 @@ public class FilmDbStorage implements FilmStorage {
                 "ORDER BY " + orderBy;
 
         List<Film> films = jdbc.query(sql, filmMapper, directorId);
+        enrichFilms(films);
+        return films;
+    }
 
-        films.forEach(film -> {
-            film.setMpa(loadMpa(film.getMpa().getId()));
-            film.setGenres(loadGenres(film.getId()));
-            film.setDirectors(loadDirectors(film.getId()));
-        });
+    @Override
+    public List<Film> searchFilms(String query, String by) {
+        String searchPattern = "%" + query.toLowerCase() + "%";
+
+        boolean searchByTitle = by.contains("title");
+        boolean searchByDirector = by.contains("director");
+
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
+                "COUNT(l.user_id) AS likes_count " +
+                "FROM films f " +
+                "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
+                "LEFT JOIN likes l ON f.film_id = l.film_id " +
+                "WHERE (? = TRUE AND LOWER(f.name) LIKE ?) " +
+                "   OR (? = TRUE AND (LOWER(d.name) LIKE ? OR LOWER(d.surname) LIKE ?)) " +
+                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
+                "ORDER BY likes_count DESC";
+
+        List<Film> films = jdbc.query(sql, filmMapper,
+                searchByTitle, searchPattern,
+                searchByDirector, searchPattern, searchPattern);
+        enrichFilms(films);
+
         return films;
     }
 
@@ -185,6 +199,16 @@ public class FilmDbStorage implements FilmStorage {
             directorStorage.findById(directorId).ifPresent(directors::add);
         }
         return directors;
+    }
+
+    private void enrichFilm(Film film) {
+        film.setMpa(loadMpa(film.getMpa().getId()));
+        film.setGenres(loadGenres(film.getId()));
+        film.setDirectors(loadDirectors(film.getId()));
+    }
+
+    private void enrichFilms(List<Film> films) {
+        films.forEach(this::enrichFilm);
     }
 
     private final RowMapper<Film> filmMapper = (ResultSet rs, int rowNum) -> {
