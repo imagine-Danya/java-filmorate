@@ -62,6 +62,16 @@ public class UserDbStorage implements UserStorage {
     }
 
     @Override
+    public void delete(Long id) {
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        int rows = jdbc.update(sql, id);
+        if (rows == 0) {
+            throw new NotFoundException("Пользователь с id " + id + " не найден");
+        }
+        log.debug("Пользователь удален из БД: id={}", id);
+    }
+
+    @Override
     public Optional<User> findById(Long id) {
         String sql = "SELECT user_id, email, login, name, birthday FROM users WHERE user_id = ?";
         List<User> users = jdbc.query(sql, userMapper, id);
