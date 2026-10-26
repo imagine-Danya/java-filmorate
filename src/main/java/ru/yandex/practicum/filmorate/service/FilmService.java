@@ -24,8 +24,8 @@ public class FilmService {
     private final UserStorage userStorage;
     private final LikeDbStorage likeStorage;
     private final MpaRatingDbStorage mpaRatingDbStorage;
-    private final GenreDbStorage genreDbStorage;
     private final DirectorStorage directorStorage;
+    private final GenreDbStorage genreDbStorage;
 
     public Film create(Film film) {
         validateFilm(film);
