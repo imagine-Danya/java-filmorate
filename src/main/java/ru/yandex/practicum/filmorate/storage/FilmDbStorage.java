@@ -167,6 +167,25 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+    @Override
+    public List<Film> getCommonFilms(Long userId, Long friendId) {
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
+                "COUNT(l.user_id) AS likes_count " +
+                "FROM films f " +
+                "JOIN ( " +
+                "    SELECT film_id FROM likes WHERE user_id = ? " +
+                "    INTERSECT " +
+                "    SELECT film_id FROM likes WHERE user_id = ? " +
+                ") common ON f.film_id = common.film_id " +
+                "LEFT JOIN likes l ON f.film_id = l.film_id " +
+                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
+                "ORDER BY likes_count DESC";
+
+        List<Film> films = jdbc.query(sql, filmMapper, userId, friendId);
+        enrichFilms(films);
+
+        return films;
+    }
     private void saveGenres(Long filmId, Set<Genre> genres) {
         String sql = "INSERT INTO film_genres (film_id, genre_id) VALUES (?, ?)";
         genres.forEach(genre -> jdbc.update(sql, filmId, genre.getId()));

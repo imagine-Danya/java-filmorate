@@ -28,19 +28,13 @@ public class FilmService {
     private final GenreDbStorage genreDbStorage;
 
     public Film create(Film film) {
-        validateFilm(film);
-        validateMpa(film);
-        validateGenres(film);
-        validateDirectors(film);
+        validateAll(film);
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
     public Film update(Film film) {
-        validateFilm(film);
-        validateMpa(film);
-        validateGenres(film);
-        validateDirectors(film);
+        validateAll(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
@@ -96,6 +90,13 @@ public class FilmService {
         return filmStorage.searchFilms(query, by);
     }
 
+    public List<Film> getCommonFilms(Long userId, Long friendId) {
+        if (userStorage.findById(userId).isEmpty() || userStorage.findById(friendId).isEmpty()) {
+            throw new NotFoundException("Один из пользователей не найден");
+        }
+        return filmStorage.getCommonFilms(userId, friendId);
+    }
+
     private void validateFilm(Film film) {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
@@ -132,5 +133,12 @@ public class FilmService {
                 }
             }
         }
+    }
+
+    private void validateAll(Film film) {
+        validateFilm(film);
+        validateMpa(film);
+        validateGenres(film);
+        validateDirectors(film);
     }
 }
