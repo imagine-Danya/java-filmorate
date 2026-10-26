@@ -77,11 +77,12 @@ public class FilmService {
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
-    public List<Film> getPopularFilms(int count) {
+    public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         if (count < 0) {
             throw new ValidationException("Параметр count не может быть отрицательным");
         }
-        return likeStorage.getPopularFilms(count);
+        log.info("Получение популярных фильмов: count={}, genreId={}, year={}", count, genreId, year);
+        return likeStorage.getPopularFilms(count, genreId, year);
     }
 
     private void validateFilm(Film film) {
