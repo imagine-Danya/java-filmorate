@@ -5,13 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
-import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
+import ru.yandex.practicum.filmorate.storage.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,11 +25,13 @@ public class FilmService {
     private final LikeDbStorage likeStorage;
     private final MpaRatingDbStorage mpaRatingDbStorage;
     private final GenreDbStorage genreDbStorage;
+    private final DirectorStorage directorStorage;
 
     public Film create(Film film) {
         validateFilm(film);
         validateMpa(film);
         validateGenres(film);
+        validateDirectors(film);
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
@@ -41,6 +40,7 @@ public class FilmService {
         validateFilm(film);
         validateMpa(film);
         validateGenres(film);
+        validateDirectors(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
@@ -106,6 +106,19 @@ public class FilmService {
             for (Genre genre : film.getGenres()) {
                 if (genre.getId() != null && genreDbStorage.findById(genre.getId()).isEmpty()) {
                     throw new NotFoundException("Жанр с id " + genre.getId() + " не найден");
+                }
+            }
+        }
+    }
+
+    private void validateDirectors(Film film) {
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() == null) {
+                    throw new ValidationException("id режиссёра не может быть пустым");
+                }
+                if (directorStorage.findById(director.getId()).isEmpty()) {
+                    throw new NotFoundException("Режиссёр с id " + director.getId() + " не найден");
                 }
             }
         }
