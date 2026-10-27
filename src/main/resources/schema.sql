@@ -62,3 +62,20 @@ ALTER TABLE mpa_ratings ALTER COLUMN mpa_rating_id RESTART WITH 1;
 ALTER TABLE genres ALTER COLUMN genre_id RESTART WITH 1;
 ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 1;
 ALTER TABLE films ALTER COLUMN film_id RESTART WITH 1;
+
+CREATE TABLE IF NOT EXISTS reviews (
+    review_id   BIGINT AUTO_INCREMENT PRIMARY KEY,
+    content     VARCHAR(500) NOT NULL,
+    is_positive BOOLEAN NOT NULL,
+    user_id     BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    film_id     BIGINT NOT NULL REFERENCES films(film_id) ON DELETE CASCADE,
+    useful      INT NOT NULL DEFAULT 0,
+    UNIQUE (user_id, film_id)
+);
+
+CREATE TABLE IF NOT EXISTS review_likes (
+    review_id BIGINT NOT NULL REFERENCES reviews(review_id) ON DELETE CASCADE,
+    user_id   BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    is_like   BOOLEAN NOT NULL,
+    PRIMARY KEY (review_id, user_id)
+);
