@@ -67,4 +67,9 @@ public class InMemoryFilmStorage implements FilmStorage {
     public List<Film> getCommonFilms(Long userId, Long friendId) {
         return Collections.emptyList(); //заглушка
     }
+
+    @Override
+    public List<Film> getRecommendations(Long userId) {
+        return Collections.emptyList(); //да да и тут
+    }
 }

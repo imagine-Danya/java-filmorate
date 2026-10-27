@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 import ru.yandex.practicum.filmorate.storage.FriendshipDbStorage;
 
@@ -17,6 +19,7 @@ public class UserService {
 
     private final UserStorage userStorage;
     private final FriendshipDbStorage friendshipStorage;
+    private final FilmStorage filmStorage;
 
     public User create(User user) {
         log.info("Создание пользователя: {}", user.getLogin());
@@ -65,5 +68,10 @@ public class UserService {
         findById(userId);
         findById(otherId);
         return friendshipStorage.getCommonFriends(userId, otherId);
+    }
+
+    public List<Film> getRecommendations(Long userId) {
+        findById(userId);
+        return filmStorage.getRecommendations(userId);
     }
 }
