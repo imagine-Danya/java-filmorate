@@ -26,5 +26,5 @@ public class Film {
 
     private Set<Genre> genres = new HashSet<>();
 
-    private Set<Director> directors = new HashSet<>();
+    private Set<Long> directorIds = new HashSet<>();
 }

@@ -62,3 +62,27 @@ ALTER TABLE mpa_ratings ALTER COLUMN mpa_rating_id RESTART WITH 1;
 ALTER TABLE genres ALTER COLUMN genre_id RESTART WITH 1;
 ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 1;
 ALTER TABLE films ALTER COLUMN film_id RESTART WITH 1;
+
+DROP TABLE IF EXISTS events;
+
+CREATE TABLE events (
+    event_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    timestamp   BIGINT NOT NULL,
+    user_id     BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    event_type  VARCHAR(20) NOT NULL CHECK (event_type IN ('LIKE', 'REVIEW', 'FRIEND')),
+    operation   VARCHAR(20) NOT NULL CHECK (operation IN ('REMOVE', 'ADD', 'UPDATE')),
+    entity_id   BIGINT NOT NULL
+);
+
+CREATE INDEX idx_events_user_id ON events(user_id);
+CREATE INDEX idx_events_timestamp ON events(timestamp);
+CREATE TABLE IF NOT EXISTS directors (
+    director_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS film_directors (
+    film_id     BIGINT NOT NULL REFERENCES films(film_id) ON DELETE CASCADE,
+    director_id BIGINT NOT NULL REFERENCES directors(director_id) ON DELETE CASCADE,
+    PRIMARY KEY (film_id, director_id)
+);
