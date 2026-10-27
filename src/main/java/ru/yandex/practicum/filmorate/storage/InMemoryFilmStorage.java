@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Component("inMemoryFilmStorage")
 @Slf4j
@@ -35,6 +36,17 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public Film updateDirectorsOnly(Film film) {
+        if (film.getId() == null || !films.containsKey(film.getId())) {
+            throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
+        }
+        Film existingFilm = films.get(film.getId());
+        existingFilm.setDirectors(film.getDirectors());
+        log.debug("Режиссеры фильма обновлены в памяти: id={}", existingFilm.getId());
+        return existingFilm;
+    }
+
+    @Override
     public void delete(Long id) {
         if (id == null || !films.containsKey(id)) {
             throw new NotFoundException("Фильм с id " + id + " не найден");
@@ -55,21 +67,50 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
-        return Collections.emptyList(); // заглушка
+        List<Film> result = films.values().stream()
+                .filter(film -> film.getDirectors() != null &&
+                        film.getDirectors().stream().anyMatch(director -> directorId.equals(director.getId())))
+                .collect(Collectors.toList());
+
+        if ("year".equalsIgnoreCase(sortBy)) {
+            result.sort(Comparator.comparing(Film::getReleaseDate));
+        } else {
+            result.sort(Comparator.comparing(Film::getReleaseDate).reversed());
+        }
+
+        return result;
     }
 
     @Override
     public List<Film> searchFilms(String query, String by) {
-        return Collections.emptyList(); // ЗАглушка
+        String lowerQuery = query.toLowerCase();
+        boolean searchByTitle = by.contains("title");
+        boolean searchByDirector = by.contains("director");
+
+        return films.values().stream()
+                .filter(film -> {
+                    boolean matchTitle = searchByTitle && film.getName().toLowerCase().contains(lowerQuery);
+
+                    boolean matchDirector = false;
+                    if (searchByDirector && film.getDirectors() != null) {
+                        matchDirector = film.getDirectors().stream().anyMatch(director ->
+                                (director.getName() != null && director.getName().toLowerCase().contains(lowerQuery)) ||
+                                        (director.getSurname() != null && director.getSurname().toLowerCase().contains(lowerQuery))
+                        );
+                    }
+
+                    return matchTitle || matchDirector;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Film> getCommonFilms(Long userId, Long friendId) {
-        return Collections.emptyList(); //заглушка
+        return Collections.emptyList();
     }
 
     @Override
     public List<Film> getRecommendations(Long userId) {
-        return Collections.emptyList(); //да да и тут
+        return Collections.emptyList();
     }
 }

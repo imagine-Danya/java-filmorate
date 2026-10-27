@@ -5,11 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -21,17 +22,16 @@ public class LikeDbStorage {
     private final JdbcTemplate jdbc;
     private final MpaRatingDbStorage mpaRatingDbStorage;
     private final GenreDbStorage genreDbStorage;
+    private final DirectorStorage directorStorage;
 
     public void addLike(Long filmId, Long userId) {
         String sql = "MERGE INTO likes (film_id, user_id) KEY (film_id, user_id) VALUES (?, ?)";
         jdbc.update(sql, filmId, userId);
-        log.debug("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
     public void removeLike(Long filmId, Long userId) {
         String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
         jdbc.update(sql, filmId, userId);
-        log.debug("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
     public List<Long> getUserLikedFilms(Long userId) {
@@ -46,26 +46,23 @@ public class LikeDbStorage {
 
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")
+        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ")
+                .append("COUNT(DISTINCT l.user_id) as likes_count ")
                 .append("FROM films f ")
                 .append("LEFT JOIN likes l ON f.film_id = l.film_id ");
 
         if (genreId != null) {
-            sql.append("JOIN film_genres fg ON f.film_id = fg.film_id ");
+            sql.append("INNER JOIN film_genres fg ON f.film_id = fg.film_id AND fg.genre_id = ? ");
         }
 
         sql.append("WHERE 1=1 ");
-
-        if (genreId != null) {
-            sql.append("AND fg.genre_id = ? ");
-        }
 
         if (year != null) {
             sql.append("AND EXTRACT(YEAR FROM f.release_date) = ? ");
         }
 
         sql.append("GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")
-                .append("ORDER BY COUNT(l.user_id) DESC ")
+                .append("ORDER BY likes_count DESC ")
                 .append("LIMIT ?");
 
         Object[] params;
@@ -91,6 +88,7 @@ public class LikeDbStorage {
     private void enrichFilm(Film film) {
         film.setMpa(loadMpa(film.getMpa().getId()));
         film.setGenres(loadGenres(film.getId()));
+        film.setDirectors(loadDirectors(film.getId()));
     }
 
     private MpaRating loadMpa(Long mpaRatingId) {
@@ -98,13 +96,23 @@ public class LikeDbStorage {
     }
 
     private Set<Genre> loadGenres(Long filmId) {
-        String sql = "SELECT genre_id FROM film_genres WHERE film_id = ?";
+        String sql = "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC";
         List<Long> genreIds = jdbc.queryForList(sql, Long.class, filmId);
-        Set<Genre> genres = new HashSet<>();
+        Set<Genre> genres = new LinkedHashSet<>();
         for (Long genreId : genreIds) {
             genreDbStorage.findById(genreId).ifPresent(genres::add);
         }
         return genres;
+    }
+
+    private Set<Director> loadDirectors(Long filmId) {
+        String sql = "SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC";
+        List<Long> directorIds = jdbc.queryForList(sql, Long.class, filmId);
+        Set<Director> directors = new LinkedHashSet<>();
+        for (Long directorId : directorIds) {
+            directorStorage.findById(directorId).ifPresent(directors::add);
+        }
+        return directors;
     }
 
     private final RowMapper<Film> filmMapper = (rs, rowNum) -> {

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -34,16 +35,34 @@ public class FilmService {
         validateFilm(film);
         validateMpa(film);
         validateGenres(film);
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            validateDirectors(film);
+        }
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
     public Film update(Film film) {
-        validateFilm(film);
-        validateMpa(film);
-        validateGenres(film);
-        log.info("Обновление фильма: {}", film.getId());
-        return filmStorage.update(film);
+        if (film.getId() == null) {
+            throw new ValidationException("ID фильма не может быть null");
+        }
+        Film existing = filmStorage.findById(film.getId())
+                .orElseThrow(() -> new NotFoundException("Фильм с id " + film.getId() + " не найден"));
+
+        if (film.getName() != null) existing.setName(film.getName());
+        if (film.getDescription() != null) existing.setDescription(film.getDescription());
+        if (film.getReleaseDate() != null) existing.setReleaseDate(film.getReleaseDate());
+        if (film.getDuration() != null) existing.setDuration(film.getDuration());
+        if (film.getMpa() != null) existing.setMpa(film.getMpa());
+        if (film.getGenres() != null) existing.setGenres(film.getGenres());
+        if (film.getDirectors() != null) existing.setDirectors(film.getDirectors());
+
+        validateFilm(existing);
+        validateMpa(existing);
+        validateGenres(existing);
+
+        log.info("Обновление фильма: {}", existing.getId());
+        return filmStorage.update(existing);
     }
 
     public void delete(Long id) {
@@ -74,8 +93,6 @@ public class FilmService {
         event.setOperation("ADD");
         event.setEntityId(filmId);
         eventStorage.create(event);
-
-        log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
     public void removeLike(Long filmId, Long userId) {
@@ -92,15 +109,12 @@ public class FilmService {
         event.setOperation("REMOVE");
         event.setEntityId(filmId);
         eventStorage.create(event);
-
-        log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         if (count < 0) {
             throw new ValidationException("Параметр count не может быть отрицательным");
         }
-        log.info("Получение популярных фильмов: count={}, genreId={}, year={}", count, genreId, year);
         return likeStorage.getPopularFilms(count, genreId, year);
     }
 
@@ -108,7 +122,6 @@ public class FilmService {
         if (!"year".equalsIgnoreCase(sortBy) && !"likes".equalsIgnoreCase(sortBy)) {
             throw new ValidationException("Параметр sortBy должен быть 'year' или 'likes'");
         }
-        log.info("Получение фильмов режиссера {}: сортировка по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirectorId(directorId, sortBy);
     }
 
@@ -127,6 +140,33 @@ public class FilmService {
             throw new NotFoundException("Один из пользователей не найден");
         }
         return filmStorage.getCommonFilms(userId, friendId);
+    }
+
+    public Film addDirector(Long filmId, Long directorId) {
+        Film film = findById(filmId);
+        if (directorStorage.findById(directorId).isEmpty()) {
+            throw new NotFoundException("Режиссёр с id " + directorId + " не найден");
+        }
+        Set<Director> directors = film.getDirectors();
+        if (directors == null) {
+            directors = new LinkedHashSet<>();
+        }
+        Director director = directorStorage.findById(directorId).orElse(null);
+        if (director != null) {
+            directors.add(director);
+        }
+        film.setDirectors(directors);
+        return filmStorage.updateDirectorsOnly(film);
+    }
+
+    public Film removeDirector(Long filmId, Long directorId) {
+        Film film = findById(filmId);
+        Set<Director> directors = film.getDirectors();
+        if (directors != null) {
+            directors.removeIf(d -> d.getId().equals(directorId));
+            film.setDirectors(directors);
+        }
+        return filmStorage.updateDirectorsOnly(film);
     }
 
     public List<Film> getRecommendations(Long userId) {
@@ -170,7 +210,7 @@ public class FilmService {
 
     private void validateMpa(Film film) {
         if (film.getMpa() == null || film.getMpa().getId() == null) {
-            throw new NotFoundException("MPA рейтинг не указан");
+            throw new ValidationException("MPA рейтинг не указан");
         }
         if (mpaRatingDbStorage.findById(film.getMpa().getId()).isEmpty()) {
             throw new NotFoundException("MPA рейтинг с id " + film.getMpa().getId() + " не найден");
@@ -182,6 +222,16 @@ public class FilmService {
             for (Genre genre : film.getGenres()) {
                 if (genre.getId() != null && genreDbStorage.findById(genre.getId()).isEmpty()) {
                     throw new NotFoundException("Жанр с id " + genre.getId() + " не найден");
+                }
+            }
+        }
+    }
+
+    private void validateDirectors(Film film) {
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() != null && directorStorage.findById(director.getId()).isEmpty()) {
+                    throw new NotFoundException("Режиссёр с id " + director.getId() + " не найден");
                 }
             }
         }

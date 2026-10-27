@@ -23,7 +23,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@Valid @RequestBody Film film) {
+    public Film update(@RequestBody Film film) {
         return filmService.update(film);
     }
 
@@ -83,5 +83,17 @@ public class FilmController {
             @RequestParam Long friendId) {
         log.info("GET /films/common?userId={}&friendId={}", userId, friendId);
         return filmService.getCommonFilms(userId, friendId);
+    }
+
+    @PutMapping("/{id}/directors/{directorId}")
+    public Film addDirector(@PathVariable Long id, @PathVariable Long directorId) {
+        log.info("PUT /films/{}/directors/{}", id, directorId);
+        return filmService.addDirector(id, directorId);
+    }
+
+    @DeleteMapping("/{id}/directors/{directorId}")
+    public Film removeDirector(@PathVariable Long id, @PathVariable Long directorId) {
+        log.info("DELETE /films/{}/directors/{}", id, directorId);
+        return filmService.removeDirector(id, directorId);
     }
 }
