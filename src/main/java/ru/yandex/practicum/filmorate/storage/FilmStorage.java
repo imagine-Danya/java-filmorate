@@ -25,5 +25,5 @@ public interface FilmStorage {
 
     List<Film> getCommonFilms(Long userId, Long friendId);
 
-    List<Film> getRecommendations(Long userId);  // <-- ДОБАВИТЬ ЭТУ СТРОКУ
+    List<Film> getRecommendations(Long userId);
 }

@@ -25,29 +25,24 @@ public class LikeDbStorage {
     private final DirectorStorage directorStorage;
 
     public void addLike(Long filmId, Long userId) {
-        String sql = "MERGE INTO likes (film_id, user_id) KEY (film_id, user_id) VALUES (?, ?)";
-        jdbc.update(sql, filmId, userId);
+        jdbc.update("MERGE INTO likes (film_id, user_id) KEY (film_id, user_id) VALUES (?, ?)", filmId, userId);
     }
 
     public void removeLike(Long filmId, Long userId) {
-        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
-        jdbc.update(sql, filmId, userId);
+        jdbc.update("DELETE FROM likes WHERE film_id = ? AND user_id = ?", filmId, userId);
     }
 
     public List<Long> getUserLikedFilms(Long userId) {
-        String sql = "SELECT film_id FROM likes WHERE user_id = ?";
-        return jdbc.queryForList(sql, Long.class, userId);
+        return jdbc.queryForList("SELECT film_id FROM likes WHERE user_id = ?", Long.class, userId);
     }
 
     public List<Long> getUsersWhoLikedFilm(Long filmId) {
-        String sql = "SELECT user_id FROM likes WHERE film_id = ?";
-        return jdbc.queryForList(sql, Long.class, filmId);
+        return jdbc.queryForList("SELECT user_id FROM likes WHERE film_id = ?", Long.class, filmId);
     }
 
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ")
-                .append("COUNT(DISTINCT l.user_id) as likes_count ")
+        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, COUNT(DISTINCT l.user_id) as likes_count ")
                 .append("FROM films f ")
                 .append("LEFT JOIN likes l ON f.film_id = l.film_id ");
 
@@ -86,33 +81,21 @@ public class LikeDbStorage {
     }
 
     private void enrichFilm(Film film) {
-        film.setMpa(loadMpa(film.getMpa().getId()));
-        film.setGenres(loadGenres(film.getId()));
-        film.setDirectors(loadDirectors(film.getId()));
-    }
+        mpaRatingDbStorage.findById(film.getMpa().getId()).ifPresent(film::setMpa);
 
-    private MpaRating loadMpa(Long mpaRatingId) {
-        return mpaRatingDbStorage.findById(mpaRatingId).orElse(null);
-    }
-
-    private Set<Genre> loadGenres(Long filmId) {
-        String sql = "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC";
-        List<Long> genreIds = jdbc.queryForList(sql, Long.class, filmId);
+        List<Long> genreIds = jdbc.queryForList("SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC", Long.class, film.getId());
         Set<Genre> genres = new LinkedHashSet<>();
-        for (Long genreId : genreIds) {
-            genreDbStorage.findById(genreId).ifPresent(genres::add);
+        for (Long id : genreIds) {
+            genreDbStorage.findById(id).ifPresent(genres::add);
         }
-        return genres;
-    }
+        film.setGenres(genres);
 
-    private Set<Director> loadDirectors(Long filmId) {
-        String sql = "SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC";
-        List<Long> directorIds = jdbc.queryForList(sql, Long.class, filmId);
+        List<Long> directorIds = jdbc.queryForList("SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC", Long.class, film.getId());
         Set<Director> directors = new LinkedHashSet<>();
-        for (Long directorId : directorIds) {
-            directorStorage.findById(directorId).ifPresent(directors::add);
+        for (Long id : directorIds) {
+            directorStorage.findById(id).ifPresent(directors::add);
         }
-        return directors;
+        film.setDirectors(directors);
     }
 
     private final RowMapper<Film> filmMapper = (rs, rowNum) -> {

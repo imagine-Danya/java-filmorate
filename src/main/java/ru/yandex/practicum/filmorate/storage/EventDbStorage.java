@@ -20,8 +20,7 @@ public class EventDbStorage {
     private final JdbcTemplate jdbc;
 
     public Event create(Event event) {
-        String sql = "INSERT INTO events (timestamp, user_id, event_type, operation, entity_id) " +
-                "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO events (timestamp, user_id, event_type, operation, entity_id) VALUES (?, ?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbc.update(connection -> {
@@ -38,8 +37,6 @@ public class EventDbStorage {
         if (key != null) {
             event.setEventId(key.longValue());
         }
-
-        log.debug("Событие создано: {}", event);
         return event;
     }
 
