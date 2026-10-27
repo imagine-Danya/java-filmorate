@@ -1,22 +1,29 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/users")
-@RequiredArgsConstructor
 @Slf4j
 public class UserController {
 
     private final UserService userService;
+    private final FilmService filmService;
+
+    public UserController(UserService userService, FilmService filmService) {
+        this.userService = userService;
+        this.filmService = filmService;
+    }
 
     @PostMapping
     public User create(@Valid @RequestBody User user) {
@@ -43,6 +50,22 @@ public class UserController {
         userService.delete(id);
     }
 
+    @GetMapping("/{id}/feed")
+    public ResponseEntity<List<Event>> getFeed(@PathVariable Long id) {
+        try {
+            userService.findById(id);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(userService.getFeed(id));
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public List<Film> getRecommendations(@PathVariable Long id) {
+        log.info("GET /users/{}/recommendations: получение рекомендаций", id);
+        return filmService.getRecommendations(id);
+    }
+
     @PutMapping("/{id}/friends/{friendId}")
     public void addFriend(@PathVariable Long id, @PathVariable Long friendId) {
         userService.addFriend(id, friendId);
@@ -61,11 +84,5 @@ public class UserController {
     @GetMapping("/{id}/friends/common/{otherId}")
     public List<User> getCommonFriends(@PathVariable Long id, @PathVariable Long otherId) {
         return userService.getCommonFriends(id, otherId);
-    }
-
-    @GetMapping("/{id}/recommendations")
-    public List<Film> getRecommendations(@PathVariable Long id) {
-        log.info("GET /users/{}/recommendations: получение рекомендаций", id);
-        return userService.getRecommendations(id);
     }
 }

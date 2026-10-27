@@ -29,6 +29,16 @@ public class LikeDbStorage {
         log.debug("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
+    public List<Long> getUserLikedFilms(Long userId) {
+        String sql = "SELECT film_id FROM likes WHERE user_id = ?";
+        return jdbc.queryForList(sql, Long.class, userId);
+    }
+
+    public List<Long> getUsersWhoLikedFilm(Long filmId) {
+        String sql = "SELECT user_id FROM likes WHERE film_id = ?";
+        return jdbc.queryForList(sql, Long.class, filmId);
+    }
+
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")

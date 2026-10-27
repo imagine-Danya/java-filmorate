@@ -4,11 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.storage.EventDbStorage;
 import ru.yandex.practicum.filmorate.storage.FriendshipDbStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ public class UserService {
 
     private final UserStorage userStorage;
     private final FriendshipDbStorage friendshipStorage;
-    private final FilmStorage filmStorage;
+    private final EventDbStorage eventStorage;
 
     public User create(User user) {
         log.info("Создание пользователя: {}", user.getLogin());
@@ -45,10 +45,32 @@ public class UserService {
         return List.copyOf(userStorage.findAll());
     }
 
+    public List<Event> getFeed(Long userId) {
+        findById(userId);
+        return eventStorage.getFeed(userId);
+    }
+
     public void addFriend(Long userId, Long friendId) {
         findById(userId);
         findById(friendId);
         friendshipStorage.addFriend(userId, friendId);
+
+        Event eventForUser = new Event();
+        eventForUser.setTimestamp(System.currentTimeMillis());
+        eventForUser.setUserId(userId);
+        eventForUser.setEventType("FRIEND");
+        eventForUser.setOperation("ADD");
+        eventForUser.setEntityId(friendId);
+        eventStorage.create(eventForUser);
+
+        Event eventForFriend = new Event();
+        eventForFriend.setTimestamp(System.currentTimeMillis());
+        eventForFriend.setUserId(friendId);
+        eventForFriend.setEventType("FRIEND");
+        eventForFriend.setOperation("ADD");
+        eventForFriend.setEntityId(userId);
+        eventStorage.create(eventForFriend);
+
         log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
     }
 
@@ -56,6 +78,23 @@ public class UserService {
         findById(userId);
         findById(friendId);
         friendshipStorage.removeFriend(userId, friendId);
+
+        Event eventForUser = new Event();
+        eventForUser.setTimestamp(System.currentTimeMillis());
+        eventForUser.setUserId(userId);
+        eventForUser.setEventType("FRIEND");
+        eventForUser.setOperation("REMOVE");
+        eventForUser.setEntityId(friendId);
+        eventStorage.create(eventForUser);
+
+        Event eventForFriend = new Event();
+        eventForFriend.setTimestamp(System.currentTimeMillis());
+        eventForFriend.setUserId(friendId);
+        eventForFriend.setEventType("FRIEND");
+        eventForFriend.setOperation("REMOVE");
+        eventForFriend.setEntityId(userId);
+        eventStorage.create(eventForFriend);
+
         log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
     }
 
@@ -68,10 +107,5 @@ public class UserService {
         findById(userId);
         findById(otherId);
         return friendshipStorage.getCommonFriends(userId, otherId);
-    }
-
-    public List<Film> getRecommendations(Long userId) {
-        findById(userId);
-        return filmStorage.getRecommendations(userId);
     }
 }
