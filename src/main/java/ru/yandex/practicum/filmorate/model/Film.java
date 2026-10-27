@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.model;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
@@ -26,5 +27,13 @@ public class Film {
 
     private Set<Genre> genres = new HashSet<>();
 
-    private Set<Director> directors = new HashSet<>();
+    private Set<Long> directors = new HashSet<>();
+
+    public Set<Long> getDirectors() {
+        return directors;
+    }
+
+    public void setDirectors(Set<Long> directors) {
+        this.directors = directors;
+    }
 }

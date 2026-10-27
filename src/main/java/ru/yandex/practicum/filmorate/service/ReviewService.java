@@ -62,6 +62,9 @@ public class ReviewService {
         Review existing = reviewStorage.findById(review.getReviewId())
                 .orElseThrow(() -> new NotFoundException("Отзыв с id " + review.getReviewId() + " не найден"));
 
+        review.setUserId(existing.getUserId());
+        review.setFilmId(existing.getFilmId());
+
         log.info("Обновление отзыва: {}", review.getReviewId());
         Review updated = reviewStorage.update(review);
 

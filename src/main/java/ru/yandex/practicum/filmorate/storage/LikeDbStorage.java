@@ -6,9 +6,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @Slf4j
@@ -16,6 +19,8 @@ import java.util.List;
 public class LikeDbStorage {
 
     private final JdbcTemplate jdbc;
+    private final MpaRatingDbStorage mpaRatingDbStorage;
+    private final GenreDbStorage genreDbStorage;
 
     public void addLike(Long filmId, Long userId) {
         String sql = "MERGE INTO likes (film_id, user_id) KEY (film_id, user_id) VALUES (?, ?)";
@@ -74,7 +79,32 @@ public class LikeDbStorage {
             params = new Object[]{count};
         }
 
-        return jdbc.query(sql.toString(), filmMapper, params);
+        List<Film> films = jdbc.query(sql.toString(), filmMapper, params);
+        enrichFilms(films);
+        return films;
+    }
+
+    private void enrichFilms(List<Film> films) {
+        films.forEach(this::enrichFilm);
+    }
+
+    private void enrichFilm(Film film) {
+        film.setMpa(loadMpa(film.getMpa().getId()));
+        film.setGenres(loadGenres(film.getId()));
+    }
+
+    private MpaRating loadMpa(Long mpaRatingId) {
+        return mpaRatingDbStorage.findById(mpaRatingId).orElse(null);
+    }
+
+    private Set<Genre> loadGenres(Long filmId) {
+        String sql = "SELECT genre_id FROM film_genres WHERE film_id = ?";
+        List<Long> genreIds = jdbc.queryForList(sql, Long.class, filmId);
+        Set<Genre> genres = new HashSet<>();
+        for (Long genreId : genreIds) {
+            genreDbStorage.findById(genreId).ifPresent(genres::add);
+        }
+        return genres;
     }
 
     private final RowMapper<Film> filmMapper = (rs, rowNum) -> {
