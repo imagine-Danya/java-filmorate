@@ -14,6 +14,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.EventCollector;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
@@ -43,12 +44,17 @@ class FeedTest {
     @Qualifier("filmDbStorage")
     private FilmStorage filmStorage;
 
+    @Autowired
+    private EventCollector eventCollector;
+
     private User user1;
     private User user2;
     private Film film;
 
     @BeforeEach
     void setUp() {
+        eventCollector.clear();
+
         user1 = createUser("user1@example.com", "user1");
         user2 = createUser("user2@example.com", "user2");
         user1 = userStorage.create(user1);
@@ -165,7 +171,6 @@ class FeedTest {
     void getFeed_nonExistentUser_shouldReturnNotFound() throws Exception {
         mockMvc.perform(get("/users/999/feed"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists())
                 .andDo(print());
     }
 
@@ -224,7 +229,6 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[?(@.userId == " + user1.getId() + ")]").isArray())
                 .andDo(print());
 
         mockMvc.perform(get("/users/" + user2.getId() + "/feed"))

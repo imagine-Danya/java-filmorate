@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.User;
@@ -45,8 +46,13 @@ public class UserController {
     }
 
     @GetMapping("/{id}/feed")
-    public List<Event> getFeed(@PathVariable Long id) {
-        return eventCollector.getFeed(id);
+    public ResponseEntity<List<Event>> getFeed(@PathVariable Long id) {
+        try {
+            userService.findById(id);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(eventCollector.getFeed(id));
     }
 
     @PutMapping("/{id}/friends/{friendId}")
