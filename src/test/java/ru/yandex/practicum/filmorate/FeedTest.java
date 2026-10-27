@@ -99,8 +99,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("REMOVE"))
-                .andExpect(jsonPath("$[1].operation").value("ADD"));
+                .andExpect(jsonPath("$[0].operation").value("ADD"))
+                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
     }
 
     @Test
@@ -132,12 +132,12 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("REMOVE"))
-                .andExpect(jsonPath("$[1].operation").value("ADD"));
+                .andExpect(jsonPath("$[0].operation").value("ADD"))
+                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
     }
 
     @Test
-    void getFeed_shouldSortEventsByTimestampDesc() throws Exception {
+    void getFeed_shouldSortEventsByTimestampAsc() throws Exception {
         mockMvc.perform(put("/films/" + film.getId() + "/like/" + user1.getId()))
                 .andExpect(status().isOk());
 
@@ -149,8 +149,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].eventType").value("FRIEND"))
-                .andExpect(jsonPath("$[1].eventType").value("LIKE"));
+                .andExpect(jsonPath("$[0].eventType").value("LIKE"))
+                .andExpect(jsonPath("$[1].eventType").value("FRIEND"));
     }
 
     @Test
