@@ -5,15 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.Event;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
-import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
-import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
-import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
-import ru.yandex.practicum.filmorate.storage.EventDbStorage;
+import ru.yandex.practicum.filmorate.storage.*;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,6 +24,7 @@ public class FilmService {
     private final UserStorage userStorage;
     private final LikeDbStorage likeStorage;
     private final MpaRatingDbStorage mpaRatingDbStorage;
+    private final DirectorStorage directorStorage;
     private final GenreDbStorage genreDbStorage;
     private final EventDbStorage eventStorage;
 
@@ -36,6 +32,7 @@ public class FilmService {
         validateFilm(film);
         validateMpa(film);
         validateGenres(film);
+        validateDirectors(film);
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
@@ -44,6 +41,7 @@ public class FilmService {
         validateFilm(film);
         validateMpa(film);
         validateGenres(film);
+        validateDirectors(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
@@ -106,6 +104,13 @@ public class FilmService {
         return likeStorage.getPopularFilms(count, genreId, year);
     }
 
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        if (!sortBy.equals("year") && !sortBy.equals("likes")) {
+            throw new ValidationException("Параметр sortBy должен быть 'year' или 'likes'");
+        }
+        return filmStorage.getFilmsByDirectorId(directorId, sortBy);
+    }
+
     private void validateFilm(Film film) {
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
@@ -126,6 +131,19 @@ public class FilmService {
             for (Genre genre : film.getGenres()) {
                 if (genre.getId() != null && genreDbStorage.findById(genre.getId()).isEmpty()) {
                     throw new NotFoundException("Жанр с id " + genre.getId() + " не найден");
+                }
+            }
+        }
+    }
+
+    private void validateDirectors(Film film) {
+        if (film.getDirectors() != null) {
+            for (Director director : film.getDirectors()) {
+                if (director.getId() == null) {
+                    throw new ValidationException("id режиссёра не может быть пустым");
+                }
+                if (directorStorage.findById(director.getId()).isEmpty()) {
+                    throw new NotFoundException("Режиссёр с id " + director.getId() + " не найден");
                 }
             }
         }
