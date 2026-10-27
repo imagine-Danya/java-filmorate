@@ -1,11 +1,11 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.EventCollector;
 
 import java.util.List;
 
@@ -16,14 +16,15 @@ import java.util.List;
 public class FilmController {
 
     private final FilmService filmService;
+    private final EventCollector eventCollector;
 
     @PostMapping
-    public Film create(@Valid @RequestBody Film film) {
+    public Film create(@RequestBody Film film) {
         return filmService.create(film);
     }
 
     @PutMapping
-    public Film update(@Valid @RequestBody Film film) {
+    public Film update(@RequestBody Film film) {
         return filmService.update(film);
     }
 
@@ -45,11 +46,13 @@ public class FilmController {
     @PutMapping("/{id}/like/{userId}")
     public void addLike(@PathVariable Long id, @PathVariable Long userId) {
         filmService.addLike(id, userId);
+        eventCollector.addEvent(userId, "LIKE", "ADD", id);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
     public void removeLike(@PathVariable Long id, @PathVariable Long userId) {
         filmService.removeLike(id, userId);
+        eventCollector.addEvent(userId, "LIKE", "REMOVE", id);
     }
 
     @GetMapping("/popular")
@@ -57,7 +60,6 @@ public class FilmController {
             @RequestParam(defaultValue = "10") int count,
             @RequestParam(required = false) Long genreId,
             @RequestParam(required = false) Integer year) {
-        log.info("GET /films/popular?count={}&genreId={}&year={}", count, genreId, year);
         return filmService.getPopularFilms(count, genreId, year);
     }
 
@@ -65,7 +67,6 @@ public class FilmController {
     public List<Film> getFilmsByDirector(
             @PathVariable Long directorId,
             @RequestParam(defaultValue = "likes") String sortBy) {
-        log.info("GET /films/director/{}?sortBy={}", directorId, sortBy);
         return filmService.getFilmsByDirector(directorId, sortBy);
     }
 
@@ -73,7 +74,6 @@ public class FilmController {
     public List<Film> searchFilms(
             @RequestParam String query,
             @RequestParam String by) {
-        log.info("GET /films/search?query={}&by={}", query, by);
         return filmService.searchFilms(query, by);
     }
 
@@ -81,7 +81,6 @@ public class FilmController {
     public List<Film> getCommonFilms(
             @RequestParam Long userId,
             @RequestParam Long friendId) {
-        log.info("GET /films/common?userId={}&friendId={}", userId, friendId);
         return filmService.getCommonFilms(userId, friendId);
     }
 }

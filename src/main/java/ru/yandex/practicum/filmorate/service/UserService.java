@@ -54,6 +54,7 @@ public class UserService {
         findById(userId);
         findById(friendId);
         friendshipStorage.addFriend(userId, friendId);
+
         Event eventForUser = new Event();
         eventForUser.setTimestamp(System.currentTimeMillis());
         eventForUser.setUserId(userId);
@@ -61,6 +62,7 @@ public class UserService {
         eventForUser.setOperation("ADD");
         eventForUser.setEntityId(friendId);
         eventStorage.create(eventForUser);
+
         Event eventForFriend = new Event();
         eventForFriend.setTimestamp(System.currentTimeMillis());
         eventForFriend.setUserId(friendId);
@@ -76,6 +78,7 @@ public class UserService {
         findById(userId);
         findById(friendId);
         friendshipStorage.removeFriend(userId, friendId);
+
         Event eventForUser = new Event();
         eventForUser.setTimestamp(System.currentTimeMillis());
         eventForUser.setUserId(userId);
@@ -83,6 +86,7 @@ public class UserService {
         eventForUser.setOperation("REMOVE");
         eventForUser.setEntityId(friendId);
         eventStorage.create(eventForUser);
+
         Event eventForFriend = new Event();
         eventForFriend.setTimestamp(System.currentTimeMillis());
         eventForFriend.setUserId(friendId);
