@@ -79,3 +79,15 @@ CREATE TABLE IF NOT EXISTS review_likes (
     is_like   BOOLEAN NOT NULL,
     PRIMARY KEY (review_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS events (
+    event_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    timestamp   BIGINT NOT NULL,
+    user_id     BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    event_type  VARCHAR(20) NOT NULL CHECK (event_type IN ('LIKE', 'REVIEW', 'FRIEND')),
+    operation   VARCHAR(20) NOT NULL CHECK (operation IN ('REMOVE', 'ADD', 'UPDATE')),
+    entity_id   BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);

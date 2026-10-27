@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.Director;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.*;
@@ -24,17 +24,22 @@ public class FilmService {
     private final UserStorage userStorage;
     private final LikeDbStorage likeStorage;
     private final MpaRatingDbStorage mpaRatingDbStorage;
-    private final DirectorStorage directorStorage;
     private final GenreDbStorage genreDbStorage;
+    private final DirectorStorage directorStorage;
+    private final EventDbStorage eventStorage;
 
     public Film create(Film film) {
-        validateAll(film);
+        validateFilm(film);
+        validateMpa(film);
+        validateGenres(film);
         log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
     public Film update(Film film) {
-        validateAll(film);
+        validateFilm(film);
+        validateMpa(film);
+        validateGenres(film);
         log.info("Обновление фильма: {}", film.getId());
         return filmStorage.update(film);
     }
@@ -59,6 +64,15 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.addLike(filmId, userId);
+
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("LIKE");
+        event.setOperation("ADD");
+        event.setEntityId(filmId);
+        eventStorage.create(event);
+
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -68,6 +82,15 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.removeLike(filmId, userId);
+
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("LIKE");
+        event.setOperation("REMOVE");
+        event.setEntityId(filmId);
+        eventStorage.create(event);
+
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
@@ -80,13 +103,20 @@ public class FilmService {
     }
 
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
-        if (!sortBy.equals("year") && !sortBy.equals("likes")) {
+        if (!"year".equalsIgnoreCase(sortBy) && !"likes".equalsIgnoreCase(sortBy)) {
             throw new ValidationException("Параметр sortBy должен быть 'year' или 'likes'");
         }
+        log.info("Получение фильмов режиссера {}: сортировка по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirectorId(directorId, sortBy);
     }
 
     public List<Film> searchFilms(String query, String by) {
+        if (query == null || query.isBlank()) {
+            throw new ValidationException("Поисковый запрос не может быть пустым");
+        }
+        if (!by.contains("title") && !by.contains("director")) {
+            throw new ValidationException("Параметр 'by' должен содержать 'title' и/или 'director'");
+        }
         return filmStorage.searchFilms(query, by);
     }
 
@@ -120,25 +150,5 @@ public class FilmService {
                 }
             }
         }
-    }
-
-    private void validateDirectors(Film film) {
-        if (film.getDirectors() != null) {
-            for (Director director : film.getDirectors()) {
-                if (director.getId() == null) {
-                    throw new ValidationException("id режиссёра не может быть пустым");
-                }
-                if (directorStorage.findById(director.getId()).isEmpty()) {
-                    throw new NotFoundException("Режиссёр с id " + director.getId() + " не найден");
-                }
-            }
-        }
-    }
-
-    private void validateAll(Film film) {
-        validateFilm(film);
-        validateMpa(film);
-        validateGenres(film);
-        validateDirectors(film);
     }
 }
