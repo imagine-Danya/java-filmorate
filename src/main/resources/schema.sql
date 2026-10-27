@@ -49,3 +49,17 @@ ALTER TABLE users ALTER COLUMN user_id RESTART WITH 1;
 ALTER TABLE mpa_ratings ALTER COLUMN mpa_rating_id RESTART WITH 1;
 ALTER TABLE genres ALTER COLUMN genre_id RESTART WITH 1;
 ALTER TABLE films ALTER COLUMN film_id RESTART WITH 1;
+
+DROP TABLE IF EXISTS events;
+
+CREATE TABLE events (
+    event_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    timestamp   BIGINT NOT NULL,
+    user_id     BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    event_type  VARCHAR(20) NOT NULL CHECK (event_type IN ('LIKE', 'REVIEW', 'FRIEND')),
+    operation   VARCHAR(20) NOT NULL CHECK (operation IN ('REMOVE', 'ADD', 'UPDATE')),
+    entity_id   BIGINT NOT NULL
+);
+
+CREATE INDEX idx_events_user_id ON events(user_id);
+CREATE INDEX idx_events_timestamp ON events(timestamp);

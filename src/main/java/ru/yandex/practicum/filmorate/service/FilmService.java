@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
@@ -12,6 +13,7 @@ import ru.yandex.practicum.filmorate.storage.UserStorage;
 import ru.yandex.practicum.filmorate.storage.LikeDbStorage;
 import ru.yandex.practicum.filmorate.storage.MpaRatingDbStorage;
 import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.EventDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,6 +30,7 @@ public class FilmService {
     private final LikeDbStorage likeStorage;
     private final MpaRatingDbStorage mpaRatingDbStorage;
     private final GenreDbStorage genreDbStorage;
+    private final EventDbStorage eventStorage;
 
     public Film create(Film film) {
         validateFilm(film);
@@ -65,6 +68,15 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.addLike(filmId, userId);
+
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("LIKE");
+        event.setOperation("ADD");
+        event.setEntityId(filmId);
+        eventStorage.create(event);
+
         log.info("Пользователь {} поставил лайк фильму {}", userId, filmId);
     }
 
@@ -74,6 +86,15 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.removeLike(filmId, userId);
+
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("LIKE");
+        event.setOperation("REMOVE");
+        event.setEntityId(filmId);
+        eventStorage.create(event);
+
         log.info("Пользователь {} удалил лайк у фильма {}", userId, filmId);
     }
 
