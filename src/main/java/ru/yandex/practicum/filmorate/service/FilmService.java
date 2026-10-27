@@ -64,6 +64,7 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.addLike(filmId, userId);
+
         Event event = new Event();
         event.setTimestamp(System.currentTimeMillis());
         event.setUserId(userId);
@@ -81,6 +82,7 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         likeStorage.removeLike(filmId, userId);
+
         Event event = new Event();
         event.setTimestamp(System.currentTimeMillis());
         event.setUserId(userId);
@@ -102,7 +104,7 @@ public class FilmService {
 
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
         if (!"year".equalsIgnoreCase(sortBy) && !"likes".equalsIgnoreCase(sortBy)) {
-            throw new ValidationException("Недопустимый параметр сортировки. Допустимые значения: 'year' или 'likes'");
+            throw new ValidationException("Параметр sortBy должен быть 'year' или 'likes'");
         }
         log.info("Получение фильмов режиссера {}: сортировка по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirectorId(directorId, sortBy);
