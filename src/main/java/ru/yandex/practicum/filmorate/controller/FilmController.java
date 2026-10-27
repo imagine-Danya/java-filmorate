@@ -68,4 +68,20 @@ public class FilmController {
         log.info("GET /films/director/{}?sortBy={}", directorId, sortBy);
         return filmService.getFilmsByDirector(directorId, sortBy);
     }
+
+    @GetMapping("/search")
+    public List<Film> searchFilms(
+            @RequestParam String query,
+            @RequestParam String by) {
+        log.info("GET /films/search?query={}&by={}", query, by);
+        return filmService.searchFilms(query, by);
+    }
+
+    @GetMapping("/common")
+    public List<Film> getCommonFilms(
+            @RequestParam Long userId,
+            @RequestParam Long friendId) {
+        log.info("GET /films/common?userId={}&friendId={}", userId, friendId);
+        return filmService.getCommonFilms(userId, friendId);
+    }
 }

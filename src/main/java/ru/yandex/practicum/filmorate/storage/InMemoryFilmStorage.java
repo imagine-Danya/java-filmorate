@@ -57,4 +57,14 @@ public class InMemoryFilmStorage implements FilmStorage {
     public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
         return Collections.emptyList(); // заглушка
     }
+
+    @Override
+    public List<Film> searchFilms(String query, String by) {
+        return Collections.emptyList(); // ЗАглушка
+    }
+
+    @Override
+    public List<Film> getCommonFilms(Long userId, Long friendId) {
+        return Collections.emptyList(); //заглушка
+    }
 }
