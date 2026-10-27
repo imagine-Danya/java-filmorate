@@ -64,9 +64,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film update(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_rating_id = ? WHERE film_id = ?";
-        int rows = jdbc.update(sql, film.getName(), film.getDescription(),
-                java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(),
-                film.getMpa().getId(), film.getId());
+        int rows = jdbc.update(sql, film.getName(), film.getDescription(), java.sql.Date.valueOf(film.getReleaseDate()), film.getDuration(), film.getMpa().getId(), film.getId());
 
         if (rows == 0) {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
@@ -138,13 +136,7 @@ public class FilmDbStorage implements FilmStorage {
 
         String orderBy = "year".equalsIgnoreCase(sortBy) ? "f.release_date ASC" : "COUNT(l.user_id) DESC";
 
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "FROM films f " +
-                "JOIN film_directors fd ON f.film_id = fd.film_id " +
-                "LEFT JOIN likes l ON f.film_id = l.film_id " +
-                "WHERE fd.director_id = ? " +
-                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "ORDER BY " + orderBy;
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " + "FROM films f " + "JOIN film_directors fd ON f.film_id = fd.film_id " + "LEFT JOIN likes l ON f.film_id = l.film_id " + "WHERE fd.director_id = ? " + "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " + "ORDER BY " + orderBy;
 
         List<Film> films = jdbc.query(sql, filmMapper, directorId);
         enrichFilms(films);
@@ -158,12 +150,7 @@ public class FilmDbStorage implements FilmStorage {
         boolean searchByDirector = by.contains("director");
 
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT DISTINCT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ")
-                .append("FROM films f ")
-                .append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
-                .append("LEFT JOIN directors d ON fd.director_id = d.director_id ")
-                .append("LEFT JOIN likes l ON f.film_id = l.film_id ")
-                .append("WHERE ");
+        sql.append("SELECT DISTINCT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id ").append("FROM films f ").append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ").append("LEFT JOIN directors d ON fd.director_id = d.director_id ").append("LEFT JOIN likes l ON f.film_id = l.film_id ").append("WHERE ");
 
         List<Object> params = new ArrayList<>();
         List<String> conditions = new ArrayList<>();
@@ -189,16 +176,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getCommonFilms(Long userId, Long friendId) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "FROM films f " +
-                "JOIN ( " +
-                "    SELECT film_id FROM likes WHERE user_id = ? " +
-                "    INTERSECT " +
-                "    SELECT film_id FROM likes WHERE user_id = ? " +
-                ") common ON f.film_id = common.film_id " +
-                "LEFT JOIN likes l ON f.film_id = l.film_id " +
-                "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
-                "ORDER BY COUNT(l.user_id) DESC";
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " + "FROM films f " + "JOIN ( " + "    SELECT film_id FROM likes WHERE user_id = ? " + "    INTERSECT " + "    SELECT film_id FROM likes WHERE user_id = ? " + ") common ON f.film_id = common.film_id " + "LEFT JOIN likes l ON f.film_id = l.film_id " + "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " + "ORDER BY COUNT(l.user_id) DESC";
 
         List<Film> films = jdbc.query(sql, filmMapper, userId, friendId);
         enrichFilms(films);
@@ -255,6 +233,7 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private void enrichFilms(List<Film> films) {
+
         films.forEach(this::enrichFilm);
     }
 
