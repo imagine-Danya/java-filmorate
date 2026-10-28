@@ -41,7 +41,6 @@ public class ReviewService {
             throw new NotFoundException("Фильм с id " + review.getFilmId() + " не найден");
         }
 
-        log.info("Создание отзыва: filmId={}, userId={}", review.getFilmId(), review.getUserId());
         Review created = reviewStorage.create(review);
 
         Event event = new Event();
@@ -65,7 +64,6 @@ public class ReviewService {
         review.setUserId(existing.getUserId());
         review.setFilmId(existing.getFilmId());
 
-        log.info("Обновление отзыва: {}", review.getReviewId());
         Review updated = reviewStorage.update(review);
 
         Event event = new Event();
@@ -92,8 +90,6 @@ public class ReviewService {
         event.setOperation("REMOVE");
         event.setEntityId(id);
         eventStorage.create(event);
-
-        log.info("Отзыв удален: {}", id);
     }
 
     public Review findById(Long id) {
@@ -123,7 +119,6 @@ public class ReviewService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         reviewStorage.addLike(reviewId, userId);
-        log.info("Пользователь {} поставил лайк отзыву {}", userId, reviewId);
     }
 
     public void addDislike(Long reviewId, Long userId) {
@@ -134,7 +129,6 @@ public class ReviewService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         reviewStorage.addDislike(reviewId, userId);
-        log.info("Пользователь {} поставил дизлайк отзыву {}", userId, reviewId);
     }
 
     public void removeLike(Long reviewId, Long userId) {
@@ -145,7 +139,6 @@ public class ReviewService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         reviewStorage.removeLike(reviewId, userId);
-        log.info("Пользователь {} удалил лайк у отзыва {}", userId, reviewId);
     }
 
     public void removeDislike(Long reviewId, Long userId) {
@@ -156,6 +149,5 @@ public class ReviewService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
         reviewStorage.removeDislike(reviewId, userId);
-        log.info("Пользователь {} удалил дизлайк у отзыва {}", userId, reviewId);
     }
 }

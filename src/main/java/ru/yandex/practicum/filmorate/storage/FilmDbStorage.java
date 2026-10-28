@@ -98,7 +98,6 @@ public class FilmDbStorage implements FilmStorage {
         if (film.isEmpty()) {
             throw new NotFoundException("Фильм с id " + id + " не найден");
         }
-
         jdbc.update("DELETE FROM film_genres WHERE film_id = ?", id);
         jdbc.update("DELETE FROM film_directors WHERE film_id = ?", id);
         jdbc.update("DELETE FROM likes WHERE film_id = ?", id);
@@ -126,7 +125,6 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
-        // Сначала проверяем, существует ли режиссер
         if (directorStorage.findById(directorId).isEmpty()) {
             throw new NotFoundException("Режиссёр с id " + directorId + " не найден");
         }
@@ -216,7 +214,6 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private Set<Genre> loadGenres(Long filmId) {
-        // ORDER BY ASC — стабильный порядок [1, 3] вместо [3, 1]
         List<Long> genreIds = jdbc.queryForList(
                 "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC",
                 Long.class, filmId);

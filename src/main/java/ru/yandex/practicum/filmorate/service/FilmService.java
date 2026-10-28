@@ -38,6 +38,7 @@ public class FilmService {
         if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
             validateDirectors(film);
         }
+        log.info("Создание фильма: {}", film.getName());
         return filmStorage.create(film);
     }
 
@@ -60,10 +61,12 @@ public class FilmService {
         validateMpa(existing);
         validateGenres(existing);
 
+        log.info("Обновление фильма: {}", existing.getId());
         return filmStorage.update(existing);
     }
 
     public void delete(Long id) {
+        log.info("Удаление фильма: {}", id);
         filmStorage.delete(id);
     }
 

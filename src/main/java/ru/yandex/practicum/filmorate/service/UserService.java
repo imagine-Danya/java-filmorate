@@ -22,17 +22,14 @@ public class UserService {
     private final EventDbStorage eventStorage;
 
     public User create(User user) {
-        log.info("Создание пользователя: {}", user.getLogin());
         return userStorage.create(user);
     }
 
     public User update(User user) {
-        log.info("Обновление пользователя: {}", user.getId());
         return userStorage.update(user);
     }
 
     public void delete(Long id) {
-        log.info("Удаление пользователя: {}", id);
         userStorage.delete(id);
     }
 
@@ -70,8 +67,6 @@ public class UserService {
         eventForFriend.setOperation("ADD");
         eventForFriend.setEntityId(userId);
         eventStorage.create(eventForFriend);
-
-        log.info("Пользователь {} добавил в друзья пользователя {}", userId, friendId);
     }
 
     public void removeFriend(Long userId, Long friendId) {
@@ -94,8 +89,6 @@ public class UserService {
         eventForFriend.setOperation("REMOVE");
         eventForFriend.setEntityId(userId);
         eventStorage.create(eventForFriend);
-
-        log.info("Пользователь {} удалил из друзей пользователя {}", userId, friendId);
     }
 
     public List<User> getFriends(Long userId) {
