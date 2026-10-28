@@ -42,7 +42,7 @@ public class EventDbStorage {
 
     public List<Event> getFeed(Long userId) {
         String sql = "SELECT event_id, timestamp, user_id, event_type, operation, entity_id " +
-                "FROM events WHERE user_id = ? ORDER BY event_id ASC";
+                "FROM events WHERE user_id = ? ORDER BY event_id DESC";
         return jdbc.query(sql, eventMapper, userId);
     }
 

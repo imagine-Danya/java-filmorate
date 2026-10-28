@@ -108,6 +108,7 @@ class FeedTest {
         mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
 
+        // События приходят в порядке DESC (новые первыми)
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
@@ -136,8 +137,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("ADD"))
-                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
+                .andExpect(jsonPath("$[0].operation").value("REMOVE"))  // Новое событие первым
+                .andExpect(jsonPath("$[1].operation").value("ADD"));    // Старое событие вторым
     }
 
     @Test
@@ -169,8 +170,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("ADD"))
-                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
+                .andExpect(jsonPath("$[0].operation").value("REMOVE"))  // Новое событие первым
+                .andExpect(jsonPath("$[1].operation").value("ADD"));    // Старое событие вторым
     }
 
     @Test
@@ -178,7 +179,7 @@ class FeedTest {
         mockMvc.perform(put("/films/" + film.getId() + "/like/" + user1.getId()))
                 .andExpect(status().isOk());
 
-        Thread.sleep(100); // Увеличили задержку для стабильности
+        Thread.sleep(100);
 
         mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
@@ -186,8 +187,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].eventType").value("LIKE"))
-                .andExpect(jsonPath("$[1].eventType").value("FRIEND"));
+                .andExpect(jsonPath("$[0].eventType").value("FRIEND"))  // Новое событие первым
+                .andExpect(jsonPath("$[1].eventType").value("LIKE"));   // Старое событие вторым
     }
 
     @Test
