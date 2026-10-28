@@ -51,7 +51,6 @@ public class UserService {
         findById(userId);
         findById(friendId);
         friendshipStorage.addFriend(userId, friendId);
-        
         Event event = new Event();
         event.setTimestamp(System.currentTimeMillis());
         event.setUserId(userId);
