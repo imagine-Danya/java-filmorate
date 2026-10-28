@@ -51,22 +51,14 @@ public class UserService {
         findById(userId);
         findById(friendId);
         friendshipStorage.addFriend(userId, friendId);
-
-        Event eventForUser = new Event();
-        eventForUser.setTimestamp(System.currentTimeMillis());
-        eventForUser.setUserId(userId);
-        eventForUser.setEventType("FRIEND");
-        eventForUser.setOperation("ADD");
-        eventForUser.setEntityId(friendId);
-        eventStorage.create(eventForUser);
-
-        Event eventForFriend = new Event();
-        eventForFriend.setTimestamp(System.currentTimeMillis());
-        eventForFriend.setUserId(friendId);
-        eventForFriend.setEventType("FRIEND");
-        eventForFriend.setOperation("ADD");
-        eventForFriend.setEntityId(userId);
-        eventStorage.create(eventForFriend);
+        
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("FRIEND");
+        event.setOperation("ADD");
+        event.setEntityId(friendId);
+        eventStorage.create(event);
     }
 
     public void removeFriend(Long userId, Long friendId) {
@@ -74,21 +66,13 @@ public class UserService {
         findById(friendId);
         friendshipStorage.removeFriend(userId, friendId);
 
-        Event eventForUser = new Event();
-        eventForUser.setTimestamp(System.currentTimeMillis());
-        eventForUser.setUserId(userId);
-        eventForUser.setEventType("FRIEND");
-        eventForUser.setOperation("REMOVE");
-        eventForUser.setEntityId(friendId);
-        eventStorage.create(eventForUser);
-
-        Event eventForFriend = new Event();
-        eventForFriend.setTimestamp(System.currentTimeMillis());
-        eventForFriend.setUserId(friendId);
-        eventForFriend.setEventType("FRIEND");
-        eventForFriend.setOperation("REMOVE");
-        eventForFriend.setEntityId(userId);
-        eventStorage.create(eventForFriend);
+        Event event = new Event();
+        event.setTimestamp(System.currentTimeMillis());
+        event.setUserId(userId);
+        event.setEventType("FRIEND");
+        event.setOperation("REMOVE");
+        event.setEntityId(friendId);
+        eventStorage.create(event);
     }
 
     public List<User> getFriends(Long userId) {
