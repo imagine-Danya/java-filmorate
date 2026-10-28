@@ -5,7 +5,10 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component("inMemoryFilmStorage")
@@ -20,6 +23,7 @@ public class InMemoryFilmStorage implements FilmStorage {
         Long id = idGenerator.getAndIncrement();
         film.setId(id);
         films.put(id, film);
+        log.debug("Фильм создан в памяти: {}", film);
         return film;
     }
 
@@ -29,25 +33,8 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
         }
         films.put(film.getId(), film);
+        log.debug("Фильм обновлен в памяти: {}", film);
         return film;
-    }
-
-    @Override
-    public Film updateDirectorsOnly(Film film) {
-        if (film.getId() == null || !films.containsKey(film.getId())) {
-            throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
-        }
-        Film existing = films.get(film.getId());
-        existing.setDirectors(film.getDirectors());
-        return existing;
-    }
-
-    @Override
-    public void delete(Long id) {
-        if (id == null || !films.containsKey(id)) {
-            throw new NotFoundException("Фильм с id " + id + " не найден");
-        }
-        films.remove(id);
     }
 
     @Override
@@ -58,25 +45,5 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public Collection<Film> findAll() {
         return films.values();
-    }
-
-    @Override
-    public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<Film> searchFilms(String query, String by) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<Film> getCommonFilms(Long userId, Long friendId) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<Film> getRecommendations(Long userId) {
-        return Collections.emptyList();
     }
 }
