@@ -7,7 +7,6 @@ import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @Component("inMemoryFilmStorage")
 @Slf4j
@@ -21,7 +20,6 @@ public class InMemoryFilmStorage implements FilmStorage {
         Long id = idGenerator.getAndIncrement();
         film.setId(id);
         films.put(id, film);
-        log.debug("Фильм создан в памяти: {}", film);
         return film;
     }
 
@@ -31,7 +29,6 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
         }
         films.put(film.getId(), film);
-        log.debug("Фильм обновлен в памяти: {}", film);
         return film;
     }
 
@@ -40,10 +37,9 @@ public class InMemoryFilmStorage implements FilmStorage {
         if (film.getId() == null || !films.containsKey(film.getId())) {
             throw new NotFoundException("Фильм с id " + film.getId() + " не найден");
         }
-        Film existingFilm = films.get(film.getId());
-        existingFilm.setDirectors(film.getDirectors());
-        log.debug("Режиссеры фильма обновлены в памяти: id={}", existingFilm.getId());
-        return existingFilm;
+        Film existing = films.get(film.getId());
+        existing.setDirectors(film.getDirectors());
+        return existing;
     }
 
     @Override
@@ -52,7 +48,6 @@ public class InMemoryFilmStorage implements FilmStorage {
             throw new NotFoundException("Фильм с id " + id + " не найден");
         }
         films.remove(id);
-        log.debug("Фильм удален из памяти: id={}", id);
     }
 
     @Override
@@ -67,41 +62,12 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
-        List<Film> result = films.values().stream()
-                .filter(film -> film.getDirectors() != null &&
-                        film.getDirectors().stream().anyMatch(director -> directorId.equals(director.getId())))
-                .collect(Collectors.toList());
-
-        if ("year".equalsIgnoreCase(sortBy)) {
-            result.sort(Comparator.comparing(Film::getReleaseDate));
-        } else {
-            result.sort(Comparator.comparing(Film::getReleaseDate).reversed());
-        }
-
-        return result;
+        return Collections.emptyList();
     }
 
     @Override
     public List<Film> searchFilms(String query, String by) {
-        String lowerQuery = query.toLowerCase();
-        boolean searchByTitle = by.contains("title");
-        boolean searchByDirector = by.contains("director");
-
-        return films.values().stream()
-                .filter(film -> {
-                    boolean matchTitle = searchByTitle && film.getName().toLowerCase().contains(lowerQuery);
-
-                    boolean matchDirector = false;
-                    if (searchByDirector && film.getDirectors() != null) {
-                        matchDirector = film.getDirectors().stream().anyMatch(director ->
-                                (director.getName() != null && director.getName().toLowerCase().contains(lowerQuery)) ||
-                                        (director.getSurname() != null && director.getSurname().toLowerCase().contains(lowerQuery))
-                        );
-                    }
-
-                    return matchTitle || matchDirector;
-                })
-                .collect(Collectors.toList());
+        return Collections.emptyList();
     }
 
     @Override

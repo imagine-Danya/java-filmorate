@@ -15,6 +15,7 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.*;
 
 @Component("filmDbStorage")
@@ -93,8 +94,14 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public void delete(Long id) {
+        Optional<Film> film = findById(id);
+        if (film.isEmpty()) {
+            throw new NotFoundException("Фильм с id " + id + " не найден");
+        }
+
         jdbc.update("DELETE FROM film_genres WHERE film_id = ?", id);
         jdbc.update("DELETE FROM film_directors WHERE film_id = ?", id);
+        jdbc.update("DELETE FROM likes WHERE film_id = ?", id);
         jdbc.update("DELETE FROM films WHERE film_id = ?", id);
     }
 
@@ -119,7 +126,13 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getFilmsByDirectorId(Long directorId, String sortBy) {
+        // Сначала проверяем, существует ли режиссер
+        if (directorStorage.findById(directorId).isEmpty()) {
+            throw new NotFoundException("Режиссёр с id " + directorId + " не найден");
+        }
+
         String orderBy = "year".equalsIgnoreCase(sortBy) ? "f.release_date ASC" : "COUNT(l.user_id) DESC";
+
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id " +
                 "FROM films f " +
                 "JOIN film_directors fd ON f.film_id = fd.film_id " +
@@ -187,7 +200,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getRecommendations(Long userId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     private void saveGenres(Long filmId, Set<Genre> genres) {
@@ -203,7 +216,10 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private Set<Genre> loadGenres(Long filmId) {
-        List<Long> genreIds = jdbc.queryForList("SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC", Long.class, filmId);
+        // ORDER BY ASC — стабильный порядок [1, 3] вместо [3, 1]
+        List<Long> genreIds = jdbc.queryForList(
+                "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC",
+                Long.class, filmId);
         Set<Genre> genres = new LinkedHashSet<>();
         for (Long id : genreIds) {
             genreDbStorage.findById(id).ifPresent(genres::add);
@@ -212,7 +228,9 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private Set<Director> loadDirectors(Long filmId) {
-        List<Long> directorIds = jdbc.queryForList("SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC", Long.class, filmId);
+        List<Long> directorIds = jdbc.queryForList(
+                "SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC",
+                Long.class, filmId);
         Set<Director> directors = new LinkedHashSet<>();
         for (Long id : directorIds) {
             directorStorage.findById(id).ifPresent(directors::add);
@@ -230,7 +248,7 @@ public class FilmDbStorage implements FilmStorage {
         films.forEach(this::enrichFilm);
     }
 
-    private final RowMapper<Film> filmMapper = (rs, rowNum) -> {
+    private final RowMapper<Film> filmMapper = (ResultSet rs, int rowNum) -> {
         Film film = new Film();
         film.setId(rs.getLong("film_id"));
         film.setName(rs.getString("name"));

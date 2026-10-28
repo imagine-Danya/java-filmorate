@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,7 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = {"classpath:schema.sql", "classpath:data.sql"}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class ReviewTest {
 
     @Autowired
@@ -48,15 +50,30 @@ class ReviewTest {
     @Qualifier("filmDbStorage")
     private FilmStorage filmStorage;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     private User user1;
     private User user2;
     private Film film;
 
     @BeforeEach
     void setUp() {
-        user1 = userStorage.create(createUser("user1@example.com", "user1"));
-        user2 = userStorage.create(createUser("user2@example.com", "user2"));
-        film = filmStorage.create(createFilm("Test Film", LocalDate.of(2020, 1, 1)));
+        jdbc.update("DELETE FROM review_likes");
+        jdbc.update("DELETE FROM reviews");
+        jdbc.update("DELETE FROM film_genres WHERE film_id > 3");
+        jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
+        jdbc.update("DELETE FROM likes WHERE film_id > 3 OR user_id > 3");
+        jdbc.update("DELETE FROM friendships WHERE user_id > 3 OR friend_id > 3");
+        jdbc.update("DELETE FROM films WHERE film_id > 3");
+        jdbc.update("DELETE FROM users WHERE user_id > 3");
+        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE reviews ALTER COLUMN review_id RESTART WITH 1");
+
+        user1 = userStorage.create(createUser("rev_u1@example.com", "rev_u1"));
+        user2 = userStorage.create(createUser("rev_u2@example.com", "rev_u2"));
+        film = filmStorage.create(createFilm("Test Review Film", LocalDate.of(2020, 1, 1)));
     }
 
     @Test

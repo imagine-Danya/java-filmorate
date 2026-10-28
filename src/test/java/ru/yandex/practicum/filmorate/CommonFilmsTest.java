@@ -19,8 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class CommonFilmsTest {
 
     @Autowired
@@ -36,20 +36,21 @@ class CommonFilmsTest {
 
     @BeforeEach
     void setUp() {
+        jdbc.update("DELETE FROM likes WHERE user_id > 3 OR film_id > 3");
+        jdbc.update("DELETE FROM films WHERE film_id > 3");
+        jdbc.update("DELETE FROM users WHERE user_id > 3");
+        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u1@mail.ru', 'u1', 'User1', '1990-01-01')");
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u2@mail.ru', 'u2', 'User2', '1990-01-01')");
         user1Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u1'", Integer.class);
         user2Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u2'", Integer.class);
-
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Общий фильм', 'Описание', '2020-01-01', 120, 1)");
         film1Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Общий фильм'", Integer.class);
-
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Личный фильм', 'Описание', '2021-01-01', 90, 1)");
         film2Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Личный фильм'", Integer.class);
-
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film1Id, user1Id);
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film1Id, user2Id);
-
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film2Id, user1Id);
     }
 

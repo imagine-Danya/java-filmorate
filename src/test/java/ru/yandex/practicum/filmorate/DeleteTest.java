@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -24,10 +26,9 @@ import java.util.Set;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import org.springframework.test.context.jdbc.Sql;
 
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -48,29 +49,37 @@ class DeleteTest {
     @Qualifier("userDbStorage")
     private UserStorage userStorage;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     private User user;
     private Film film;
 
     @BeforeEach
     void setUp() {
 
+        jdbc.update("DELETE FROM film_genres WHERE film_id > 3");
+        jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
+        jdbc.update("DELETE FROM likes WHERE film_id > 3 OR user_id > 3");
+        jdbc.update("DELETE FROM friendships WHERE user_id > 3 OR friend_id > 3");
+        jdbc.update("DELETE FROM films WHERE film_id > 3");
+        jdbc.update("DELETE FROM users WHERE user_id > 3");
+        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
         user = new User();
         user.setEmail("test@example.com");
         user.setLogin("testuser");
         user.setName("Test User");
         user.setBirthday(LocalDate.of(1990, 1, 1));
         user = userStorage.create(user);
-
         film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
         film.setReleaseDate(LocalDate.of(2020, 1, 1));
         film.setDuration(120);
-
         MpaRating mpa = new MpaRating();
         mpa.setId(1L);
         film.setMpa(mpa);
-
         Set<Genre> genres = new HashSet<>();
         Genre genre = new Genre();
         genre.setId(1L);
@@ -114,10 +123,8 @@ class DeleteTest {
 
     @Test
     void deleteFilm_shouldRemoveFilmFromDatabase() throws Exception {
-
         mockMvc.perform(delete("/films/" + film.getId()))
                 .andExpect(status().isOk());
-
 
         mockMvc.perform(get("/films/" + film.getId()))
                 .andExpect(status().isNotFound())
@@ -158,7 +165,6 @@ class DeleteTest {
         mockMvc.perform(delete("/films/" + filmWithGenres.getId()))
                 .andExpect(status().isOk());
 
-
         mockMvc.perform(get("/films/" + filmWithGenres.getId()))
                 .andExpect(status().isNotFound())
                 .andDo(print());
@@ -166,17 +172,14 @@ class DeleteTest {
 
     @Test
     void deleteUser_shouldNotAffectOtherUsers() throws Exception {
-
         User user2 = new User();
         user2.setEmail("user2@example.com");
         user2.setLogin("user2");
         user2.setBirthday(LocalDate.of(1991, 1, 1));
         user2 = userStorage.create(user2);
 
-
         mockMvc.perform(delete("/users/" + user.getId()))
                 .andExpect(status().isOk());
-
 
         mockMvc.perform(get("/users/" + user2.getId()))
                 .andExpect(status().isOk())
@@ -186,7 +189,6 @@ class DeleteTest {
 
     @Test
     void deleteFilm_shouldNotAffectOtherFilms() throws Exception {
-
         Film film2 = new Film();
         film2.setName("Film 2");
         film2.setDescription("Description 2");
@@ -205,10 +207,8 @@ class DeleteTest {
 
         film2 = filmStorage.create(film2);
 
-
         mockMvc.perform(delete("/films/" + film.getId()))
                 .andExpect(status().isOk());
-
 
         mockMvc.perform(get("/films/" + film2.getId()))
                 .andExpect(status().isOk())

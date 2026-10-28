@@ -42,7 +42,8 @@ public class LikeDbStorage {
 
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         StringBuilder sql = new StringBuilder();
-        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, COUNT(DISTINCT l.user_id) as likes_count ")
+        sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ")
+                .append("COUNT(DISTINCT l.user_id) as likes_count ")
                 .append("FROM films f ")
                 .append("LEFT JOIN likes l ON f.film_id = l.film_id ");
 
@@ -83,14 +84,18 @@ public class LikeDbStorage {
     private void enrichFilm(Film film) {
         mpaRatingDbStorage.findById(film.getMpa().getId()).ifPresent(film::setMpa);
 
-        List<Long> genreIds = jdbc.queryForList("SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC", Long.class, film.getId());
+        List<Long> genreIds = jdbc.queryForList(
+                "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC",
+                Long.class, film.getId());
         Set<Genre> genres = new LinkedHashSet<>();
         for (Long id : genreIds) {
             genreDbStorage.findById(id).ifPresent(genres::add);
         }
         film.setGenres(genres);
 
-        List<Long> directorIds = jdbc.queryForList("SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC", Long.class, film.getId());
+        List<Long> directorIds = jdbc.queryForList(
+                "SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC",
+                Long.class, film.getId());
         Set<Director> directors = new LinkedHashSet<>();
         for (Long id : directorIds) {
             directorStorage.findById(id).ifPresent(directors::add);

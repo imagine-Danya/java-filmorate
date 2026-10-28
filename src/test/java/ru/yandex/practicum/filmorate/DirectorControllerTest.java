@@ -19,8 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class DirectorControllerTest {
 
     @Autowired
@@ -37,22 +37,25 @@ class DirectorControllerTest {
 
     @BeforeEach
     void setUp() {
+
+        jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
+        jdbc.update("DELETE FROM likes WHERE film_id > 3 OR user_id > 3");
+        jdbc.update("DELETE FROM films WHERE film_id > 3");
+        jdbc.update("DELETE FROM users WHERE user_id > 3");
+        jdbc.update("DELETE FROM directors WHERE director_id > 2");
+        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 3");
         jdbc.update("INSERT INTO directors (name, surname) VALUES ('Кристофер', 'Нолан')");
         directorId = jdbc.queryForObject("SELECT director_id FROM directors WHERE surname = 'Нолан'", Integer.class);
-
-
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u1@mail.ru', 'u1', 'User1', '1990-01-01')");
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u2@mail.ru', 'u2', 'User2', '1990-01-01')");
         user1Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u1'", Integer.class);
         user2Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u2'", Integer.class);
-
-
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Начало', 'Сон', '2010-07-16', 148, 1)");
         film1Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Начало'", Integer.class);
-
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Интерстеллар', 'Космос', '2014-11-07', 169, 1)");
         film2Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Интерстеллар'", Integer.class);
-
         jdbc.update("INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)", film1Id, directorId);
         jdbc.update("INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)", film2Id, directorId);
     }

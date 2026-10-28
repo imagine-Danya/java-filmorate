@@ -19,8 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
 class SearchControllerTest {
 
     @Autowired
@@ -36,6 +36,16 @@ class SearchControllerTest {
 
     @BeforeEach
     void setUp() {
+        jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
+        jdbc.update("DELETE FROM likes WHERE film_id > 3 OR user_id > 3");
+        jdbc.update("DELETE FROM films WHERE film_id > 3");
+        jdbc.update("DELETE FROM users WHERE user_id > 3");
+        jdbc.update("DELETE FROM directors WHERE director_id > 2");
+
+        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        jdbc.update("ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 3");
+
         jdbc.update("INSERT INTO directors (name, surname) VALUES ('Кристофер', 'Нолан')");
         directorId = jdbc.queryForObject("SELECT director_id FROM directors WHERE surname = 'Нолан'", Integer.class);
 
