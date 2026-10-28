@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate;
 
-import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,14 +22,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class FilmDbStorageTest {
 
     private final FilmDbStorage filmStorage;
@@ -40,13 +37,24 @@ class FilmDbStorageTest {
 
     private Film film;
 
+    @Autowired
+    public FilmDbStorageTest(FilmDbStorage filmStorage) {
+        this.filmStorage = filmStorage;
+    }
+
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
+
         jdbc.update("DELETE FROM film_genres WHERE film_id > 3");
         jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
         jdbc.update("DELETE FROM likes WHERE film_id > 3");
         jdbc.update("DELETE FROM films WHERE film_id > 3");
-        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM films", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        }
+
         film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
@@ -65,6 +73,36 @@ class FilmDbStorageTest {
         genres.add(genre1);
         genres.add(genre2);
         film.setGenres(genres);
+    }
+
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
+
+        Integer directorCount = jdbc.queryForObject("SELECT COUNT(*) FROM directors", Integer.class);
+        if (directorCount == null || directorCount == 0) {
+            jdbc.update("MERGE INTO directors (director_id, name, surname) KEY (director_id) VALUES " +
+                    "(1, 'Иван', 'Иванов')," +
+                    "(2, 'Петр', 'Петров')");
+        }
     }
 
     @Test

@@ -19,8 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class CommonFilmsTest {
 
     @Autowired
@@ -36,22 +35,56 @@ class CommonFilmsTest {
 
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
+
         jdbc.update("DELETE FROM likes WHERE user_id > 3 OR film_id > 3");
         jdbc.update("DELETE FROM films WHERE film_id > 3");
         jdbc.update("DELETE FROM users WHERE user_id > 3");
-        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
-        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM films", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        }
+
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u1@mail.ru', 'u1', 'User1', '1990-01-01')");
         jdbc.update("INSERT INTO users (email, login, name, birthday) VALUES ('u2@mail.ru', 'u2', 'User2', '1990-01-01')");
         user1Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u1'", Integer.class);
         user2Id = jdbc.queryForObject("SELECT user_id FROM users WHERE login = 'u2'", Integer.class);
+
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Общий фильм', 'Описание', '2020-01-01', 120, 1)");
         film1Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Общий фильм'", Integer.class);
+
         jdbc.update("INSERT INTO films (name, description, release_date, duration, mpa_rating_id) VALUES ('Личный фильм', 'Описание', '2021-01-01', 90, 1)");
         film2Id = jdbc.queryForObject("SELECT film_id FROM films WHERE name = 'Личный фильм'", Integer.class);
+
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film1Id, user1Id);
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film1Id, user2Id);
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film2Id, user1Id);
+    }
+
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
     }
 
     @Test

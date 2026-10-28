@@ -19,8 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class SearchControllerTest {
 
     @Autowired
@@ -36,15 +35,23 @@ class SearchControllerTest {
 
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
+
         jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
         jdbc.update("DELETE FROM likes WHERE film_id > 3 OR user_id > 3");
         jdbc.update("DELETE FROM films WHERE film_id > 3");
         jdbc.update("DELETE FROM users WHERE user_id > 3");
         jdbc.update("DELETE FROM directors WHERE director_id > 2");
 
-        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
-        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
-        jdbc.update("ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 3");
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM films", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM directors", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE directors ALTER COLUMN director_id RESTART WITH 3");
+        }
 
         jdbc.update("INSERT INTO directors (name, surname) VALUES ('Кристофер', 'Нолан')");
         directorId = jdbc.queryForObject("SELECT director_id FROM directors WHERE surname = 'Нолан'", Integer.class);
@@ -60,6 +67,36 @@ class SearchControllerTest {
 
         jdbc.update("INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)", film1Id, directorId);
         jdbc.update("INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)", film2Id, directorId);
+    }
+
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
+
+        Integer directorCount = jdbc.queryForObject("SELECT COUNT(*) FROM directors", Integer.class);
+        if (directorCount == null || directorCount == 0) {
+            jdbc.update("MERGE INTO directors (director_id, name, surname) KEY (director_id) VALUES " +
+                    "(1, 'Иван', 'Иванов')," +
+                    "(2, 'Петр', 'Петров')");
+        }
     }
 
     @Test

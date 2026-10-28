@@ -27,8 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -57,6 +56,7 @@ class DeleteTest {
 
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
 
         jdbc.update("DELETE FROM film_genres WHERE film_id > 3");
         jdbc.update("DELETE FROM film_directors WHERE film_id > 3");
@@ -64,14 +64,21 @@ class DeleteTest {
         jdbc.update("DELETE FROM friendships WHERE user_id > 3 OR friend_id > 3");
         jdbc.update("DELETE FROM films WHERE film_id > 3");
         jdbc.update("DELETE FROM users WHERE user_id > 3");
-        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
-        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM films", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        }
+
         user = new User();
         user.setEmail("test@example.com");
         user.setLogin("testuser");
         user.setName("Test User");
         user.setBirthday(LocalDate.of(1990, 1, 1));
         user = userStorage.create(user);
+
         film = new Film();
         film.setName("Test Film");
         film.setDescription("Test Description");
@@ -87,6 +94,29 @@ class DeleteTest {
         film.setGenres(genres);
 
         film = filmStorage.create(film);
+    }
+
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
     }
 
     @Test

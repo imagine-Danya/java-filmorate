@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -26,10 +28,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import org.springframework.test.context.jdbc.Sql;
 
 @Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -50,12 +50,16 @@ class PopularFilmsTest {
     @Qualifier("userDbStorage")
     private UserStorage userStorage;
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     private User user1;
     private User user2;
     private User user3;
 
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
 
         user1 = createUser("user1@example.com", "user1");
         user2 = createUser("user2@example.com", "user2");
@@ -66,12 +70,35 @@ class PopularFilmsTest {
         userStorage.create(user3);
     }
 
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
+    }
+
     @Test
     void getPopularFilms_withoutFilters_shouldReturnAllFilmsSortedByLikes() throws Exception {
 
-        Film comedy2020 = createFilm("Comedy 2020", LocalDate.of(2020, 1, 1), 1L, Set.of(1L)); // Комедия 2020
-        Film drama2020 = createFilm("Drama 2020", LocalDate.of(2020, 1, 1), 1L, Set.of(2L));   // Драма 2020
-        Film comedy2021 = createFilm("Comedy 2021", LocalDate.of(2021, 1, 1), 1L, Set.of(1L)); // Комедия 2021
+        Film comedy2020 = createFilm("Comedy 2020", LocalDate.of(2020, 1, 1), 1L, Set.of(1L));
+        Film drama2020 = createFilm("Drama 2020", LocalDate.of(2020, 1, 1), 1L, Set.of(2L));
+        Film comedy2021 = createFilm("Comedy 2021", LocalDate.of(2021, 1, 1), 1L, Set.of(1L));
 
         comedy2020 = filmStorage.create(comedy2020);
         drama2020 = filmStorage.create(drama2020);
@@ -86,14 +113,20 @@ class PopularFilmsTest {
 
         addLike(comedy2021.getId(), user1.getId());
 
-        mockMvc.perform(get("/films/popular?count=10")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(3))).andExpect(jsonPath("$[0].name").value("Comedy 2020")).andExpect(jsonPath("$[1].name").value("Drama 2020")).andExpect(jsonPath("$[2].name").value("Comedy 2021")).andDo(print());
+        mockMvc.perform(get("/films/popular?count=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(3)))
+                .andExpect(jsonPath("$[0].name").value("Comedy 2020"))
+                .andExpect(jsonPath("$[1].name").value("Drama 2020"))
+                .andExpect(jsonPath("$[2].name").value("Comedy 2021"))
+                .andDo(print());
     }
 
     @Test
     void getPopularFilms_withGenreFilter_shouldReturnOnlyFilmsOfGenre() throws Exception {
 
-        Film comedy = createFilm("Comedy Film", LocalDate.of(2020, 1, 1), 1L, Set.of(1L)); // Комедия
-        Film drama = createFilm("Drama Film", LocalDate.of(2020, 1, 1), 1L, Set.of(2L));   // Драма
+        Film comedy = createFilm("Comedy Film", LocalDate.of(2020, 1, 1), 1L, Set.of(1L));
+        Film drama = createFilm("Drama Film", LocalDate.of(2020, 1, 1), 1L, Set.of(2L));
 
         comedy = filmStorage.create(comedy);
         drama = filmStorage.create(drama);
@@ -104,8 +137,17 @@ class PopularFilmsTest {
         addLike(drama.getId(), user2.getId());
         addLike(drama.getId(), user3.getId());
 
-        mockMvc.perform(get("/films/popular?count=10&genreId=1")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Comedy Film")).andDo(print());
-        mockMvc.perform(get("/films/popular?count=10&genreId=2")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Drama Film")).andDo(print());
+        mockMvc.perform(get("/films/popular?count=10&genreId=1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Comedy Film"))
+                .andDo(print());
+
+        mockMvc.perform(get("/films/popular?count=10&genreId=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Drama Film"))
+                .andDo(print());
     }
 
     @Test
@@ -126,8 +168,17 @@ class PopularFilmsTest {
         addLike(film2022.getId(), user2.getId());
         addLike(film2022.getId(), user3.getId());
 
-        mockMvc.perform(get("/films/popular?count=10&year=2021")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Film 2021")).andDo(print());
-        mockMvc.perform(get("/films/popular?count=10&year=2022")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Film 2022")).andDo(print());
+        mockMvc.perform(get("/films/popular?count=10&year=2021"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Film 2021"))
+                .andDo(print());
+
+        mockMvc.perform(get("/films/popular?count=10&year=2022"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Film 2022"))
+                .andDo(print());
     }
 
     @Test
@@ -148,9 +199,23 @@ class PopularFilmsTest {
         addLike(drama2020.getId(), user2.getId());
         addLike(drama2020.getId(), user3.getId());
 
-        mockMvc.perform(get("/films/popular?count=10&genreId=1&year=2020")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Comedy 2020")).andDo(print());
-        mockMvc.perform(get("/films/popular?count=10&genreId=2&year=2020")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Drama 2020")).andDo(print());
-        mockMvc.perform(get("/films/popular?count=10&genreId=1&year=2021")).andExpect(status().isOk()).andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1))).andExpect(jsonPath("$[0].name").value("Comedy 2021")).andDo(print());
+        mockMvc.perform(get("/films/popular?count=10&genreId=1&year=2020"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Comedy 2020"))
+                .andDo(print());
+
+        mockMvc.perform(get("/films/popular?count=10&genreId=2&year=2020"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Drama 2020"))
+                .andDo(print());
+
+        mockMvc.perform(get("/films/popular?count=10&genreId=1&year=2021"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].name").value("Comedy 2021"))
+                .andDo(print());
     }
 
     @Test
@@ -208,6 +273,7 @@ class PopularFilmsTest {
     }
 
     private void addLike(Long filmId, Long userId) throws Exception {
-        mockMvc.perform(put("/films/" + filmId + "/like/" + userId)).andExpect(status().isOk());
+        mockMvc.perform(put("/films/" + filmId + "/like/" + userId))
+                .andExpect(status().isOk());
     }
 }

@@ -32,8 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
-@Sql(scripts = "classpath:data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_CLASS)
+@Sql(scripts = "classpath:schema.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class ReviewTest {
 
     @Autowired
@@ -59,6 +58,8 @@ class ReviewTest {
 
     @BeforeEach
     void setUp() {
+        ensureReferenceDataExists();
+
         jdbc.update("DELETE FROM review_likes");
         jdbc.update("DELETE FROM reviews");
         jdbc.update("DELETE FROM film_genres WHERE film_id > 3");
@@ -67,13 +68,41 @@ class ReviewTest {
         jdbc.update("DELETE FROM friendships WHERE user_id > 3 OR friend_id > 3");
         jdbc.update("DELETE FROM films WHERE film_id > 3");
         jdbc.update("DELETE FROM users WHERE user_id > 3");
-        jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
-        jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE users ALTER COLUMN user_id RESTART WITH 4");
+        }
+        if (jdbc.queryForObject("SELECT COUNT(*) FROM films", Integer.class) > 0) {
+            jdbc.update("ALTER TABLE films ALTER COLUMN film_id RESTART WITH 4");
+        }
         jdbc.update("ALTER TABLE reviews ALTER COLUMN review_id RESTART WITH 1");
 
         user1 = userStorage.create(createUser("rev_u1@example.com", "rev_u1"));
         user2 = userStorage.create(createUser("rev_u2@example.com", "rev_u2"));
         film = filmStorage.create(createFilm("Test Review Film", LocalDate.of(2020, 1, 1)));
+    }
+
+    private void ensureReferenceDataExists() {
+        Integer mpaCount = jdbc.queryForObject("SELECT COUNT(*) FROM mpa_ratings", Integer.class);
+        if (mpaCount == null || mpaCount == 0) {
+            jdbc.update("MERGE INTO mpa_ratings (mpa_rating_id, name, description) KEY (mpa_rating_id) VALUES " +
+                    "(1, 'G', 'У фильма нет возрастных ограничений')," +
+                    "(2, 'PG', 'Детям рекомендуется смотреть фильм с родителями')," +
+                    "(3, 'PG-13', 'Детям до 13 лет просмотр не желателен')," +
+                    "(4, 'R', 'Лицам до 17 лет просматривать фильм только в сопровождении одного из родителей')," +
+                    "(5, 'NC-17', 'Лицам до 18 лет просмотр запрещён')");
+        }
+
+        Integer genreCount = jdbc.queryForObject("SELECT COUNT(*) FROM genres", Integer.class);
+        if (genreCount == null || genreCount == 0) {
+            jdbc.update("MERGE INTO genres (genre_id, name) KEY (genre_id) VALUES " +
+                    "(1, 'Комедия')," +
+                    "(2, 'Драма')," +
+                    "(3, 'Мультфильм')," +
+                    "(4, 'Триллер')," +
+                    "(5, 'Документальный')," +
+                    "(6, 'Боевик')");
+        }
     }
 
     @Test
