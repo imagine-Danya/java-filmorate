@@ -106,7 +106,6 @@ class FeedTest {
     void getFeed_shouldRecordFriendAddEvent() throws Exception {
         mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
-
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
@@ -120,10 +119,8 @@ class FeedTest {
     void getFeed_shouldRecordFriendRemoveEvent() throws Exception {
         mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
-
         mockMvc.perform(delete("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
-
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
@@ -135,7 +132,6 @@ class FeedTest {
     void getFeed_shouldRecordLikeAddEvent() throws Exception {
         mockMvc.perform(put("/films/" + film.getId() + "/like/" + user1.getId()))
                 .andExpect(status().isOk());
-
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
@@ -143,7 +139,6 @@ class FeedTest {
                 .andExpect(jsonPath("$[0].operation").value("ADD"))
                 .andExpect(jsonPath("$[0].entityId").value(film.getId()))
                 .andExpect(jsonPath("$[0].userId").value(user1.getId()));
-        
         mockMvc.perform(get("/users/" + user2.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
@@ -191,7 +186,6 @@ class FeedTest {
     void getFeed_eachEventShouldHaveAllRequiredFields() throws Exception {
         mockMvc.perform(put("/films/" + film.getId() + "/like/" + user1.getId()))
                 .andExpect(status().isOk());
-
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].eventId").exists())
