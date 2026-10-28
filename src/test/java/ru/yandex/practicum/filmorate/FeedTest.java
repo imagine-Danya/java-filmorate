@@ -94,7 +94,6 @@ class FeedTest {
         }
     }
 
-
     @Test
     void getFeed_shouldReturnEmptyListForNewUser() throws Exception {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
@@ -108,7 +107,6 @@ class FeedTest {
         mockMvc.perform(put("/users/" + user1.getId() + "/friends/" + user2.getId()))
                 .andExpect(status().isOk());
 
-        // События приходят в порядке DESC (новые первыми)
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
@@ -137,8 +135,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("REMOVE"))  // Новое событие первым
-                .andExpect(jsonPath("$[1].operation").value("ADD"));    // Старое событие вторым
+                .andExpect(jsonPath("$[0].operation").value("ADD"))
+                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
     }
 
     @Test
@@ -170,8 +168,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].operation").value("REMOVE"))  // Новое событие первым
-                .andExpect(jsonPath("$[1].operation").value("ADD"));    // Старое событие вторым
+                .andExpect(jsonPath("$[0].operation").value("ADD"))
+                .andExpect(jsonPath("$[1].operation").value("REMOVE"));
     }
 
     @Test
@@ -187,8 +185,8 @@ class FeedTest {
         mockMvc.perform(get("/users/" + user1.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(2)))
-                .andExpect(jsonPath("$[0].eventType").value("FRIEND"))  // Новое событие первым
-                .andExpect(jsonPath("$[1].eventType").value("LIKE"));   // Старое событие вторым
+                .andExpect(jsonPath("$[0].eventType").value("LIKE"))
+                .andExpect(jsonPath("$[1].eventType").value("FRIEND"));
     }
 
     @Test
