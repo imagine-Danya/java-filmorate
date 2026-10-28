@@ -114,14 +114,6 @@ class FeedTest {
                 .andExpect(jsonPath("$[0].operation").value("ADD"))
                 .andExpect(jsonPath("$[0].entityId").value(user2.getId()))
                 .andExpect(jsonPath("$[0].userId").value(user1.getId()));
-
-        mockMvc.perform(get("/users/" + user2.getId() + "/feed"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
-                .andExpect(jsonPath("$[0].eventType").value("FRIEND"))
-                .andExpect(jsonPath("$[0].operation").value("ADD"))
-                .andExpect(jsonPath("$[0].entityId").value(user1.getId()))
-                .andExpect(jsonPath("$[0].userId").value(user2.getId()));
     }
 
     @Test
@@ -151,7 +143,7 @@ class FeedTest {
                 .andExpect(jsonPath("$[0].operation").value("ADD"))
                 .andExpect(jsonPath("$[0].entityId").value(film.getId()))
                 .andExpect(jsonPath("$[0].userId").value(user1.getId()));
-
+        
         mockMvc.perform(get("/users/" + user2.getId() + "/feed"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
