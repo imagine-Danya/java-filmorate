@@ -16,32 +16,30 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(NotFoundException ex) {
-        log.warn("Ресурс не найден: {}", ex.getMessage());
-        return Map.of("error", ex.getMessage());
+    public Map<String, String> handleNotFoundException(NotFoundException ex) {
+        log.error("Ресурс не найден: {}", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return error;
     }
 
     @ExceptionHandler(ValidationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleValidation(ValidationException ex) {
-        log.warn("Ошибка валидации: {}", ex.getMessage());
-        return Map.of("error", ex.getMessage());
+    public Map<String, String> handleValidationException(ValidationException ex) {
+        log.error("Ошибка валидации: {}", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("error", ex.getMessage());
+        return error;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        log.warn("Ошибка валидации аргументов: {}", ex.getMessage());
+    public Map<String, String> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        log.error("Ошибка валидации аргументов: {}", ex.getMessage());
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                errors.put(error.getField(), error.getDefaultMessage()));
+                errors.put(error.getField(), error.getDefaultMessage())
+        );
         return errors;
-    }
-
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Map<String, String> handleGeneral(Exception ex) {
-        log.error("Непредвиденная ошибка: ", ex);
-        return Map.of("error", "Внутренняя ошибка сервера");
     }
 }
