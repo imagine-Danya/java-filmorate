@@ -12,3 +12,4 @@ MERGE INTO genres (name) KEY (name) VALUES
     ('Триллер'),
     ('Документальный'),
     ('Боевик');
+    
