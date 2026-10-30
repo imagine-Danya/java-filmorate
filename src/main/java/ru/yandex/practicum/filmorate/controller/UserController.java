@@ -54,7 +54,7 @@ public class UserController {
         log.info("GET /users/{}/feed: получение ленты событий", id);
         return userService.getFeed(id);
     }
-    
+
     @GetMapping("/{userId}/recommendations")
     public List<Film> getRecommendations(@PathVariable Long userId) {
         log.info("GET /users/{}/recommendations: получение рекомендаций", userId);
