@@ -40,6 +40,26 @@ public class LikeDbStorage {
         return jdbc.queryForList("SELECT user_id FROM likes WHERE film_id = ?", Long.class, filmId);
     }
 
+    public List<Long> getRecommendedFilmIds(Long userId) {
+        String sql = "SELECT l.film_id " +
+                "FROM likes l " +
+                "WHERE l.user_id IN (" +
+                "    SELECT l2.user_id " +
+                "    FROM likes l2 " +
+                "    WHERE l2.film_id IN (" +
+                "        SELECT film_id FROM likes WHERE user_id = ?" +
+                "    ) " +
+                "    AND l2.user_id != ?" +
+                ") " +
+                "AND l.film_id NOT IN (" +
+                "    SELECT film_id FROM likes WHERE user_id = ?" +
+                ") " +
+                "GROUP BY l.film_id " +
+                "ORDER BY COUNT(l.user_id) DESC";
+
+        return jdbc.queryForList(sql, Long.class, userId, userId, userId);
+    }
+
     public List<Film> getPopularFilms(int count, Long genreId, Integer year) {
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ")

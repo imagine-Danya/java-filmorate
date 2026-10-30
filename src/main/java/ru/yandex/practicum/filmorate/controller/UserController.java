@@ -2,7 +2,6 @@ package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Event;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -51,19 +50,15 @@ public class UserController {
     }
 
     @GetMapping("/{id}/feed")
-    public ResponseEntity<List<Event>> getFeed(@PathVariable Long id) {
-        try {
-            userService.findById(id);
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(userService.getFeed(id));
+    public List<Event> getFeed(@PathVariable Long id) {
+        log.info("GET /users/{}/feed: получение ленты событий", id);
+        return userService.getFeed(id);
     }
-
-    @GetMapping("/{id}/recommendations")
-    public List<Film> getRecommendations(@PathVariable Long id) {
-        log.info("GET /users/{}/recommendations: получение рекомендаций", id);
-        return filmService.getRecommendations(id);
+    
+    @GetMapping("/{userId}/recommendations")
+    public List<Film> getRecommendations(@PathVariable Long userId) {
+        log.info("GET /users/{}/recommendations: получение рекомендаций", userId);
+        return filmService.getRecommendations(userId);
     }
 
     @PutMapping("/{id}/friends/{friendId}")

@@ -68,63 +68,56 @@ public class ReviewDbStorage {
     }
 
     public Optional<Review> findById(Long id) {
-        String sql = "SELECT review_id, content, is_positive, user_id, film_id, useful " +
-                "FROM reviews WHERE review_id = ?";
+        String sql = "SELECT * FROM reviews WHERE review_id = ?";
         List<Review> reviews = jdbc.query(sql, reviewMapper, id);
         return reviews.isEmpty() ? Optional.empty() : Optional.of(reviews.get(0));
     }
 
     public Collection<Review> findByFilmId(Long filmId, int count) {
-        String sql = "SELECT review_id, content, is_positive, user_id, film_id, useful " +
-                "FROM reviews WHERE film_id = ? ORDER BY useful DESC LIMIT ?";
+        String sql = "SELECT * FROM reviews WHERE film_id = ? ORDER BY useful DESC LIMIT ?";
         return jdbc.query(sql, reviewMapper, filmId, count);
     }
 
     public Collection<Review> findAll(int count) {
-        String sql = "SELECT review_id, content, is_positive, user_id, film_id, useful " +
-                "FROM reviews ORDER BY useful DESC LIMIT ?";
+        String sql = "SELECT * FROM reviews ORDER BY useful DESC LIMIT ?";
         return jdbc.query(sql, reviewMapper, count);
     }
 
     public void addLike(Long reviewId, Long userId) {
+        String mergeSql = "MERGE INTO review_likes (review_id, user_id, is_like) " +
+                "KEY (review_id, user_id) " +
+                "VALUES (?, ?, true)";
+
         String checkSql = "SELECT is_like FROM review_likes WHERE review_id = ? AND user_id = ?";
         List<Boolean> existing = jdbc.queryForList(checkSql, Boolean.class, reviewId, userId);
 
-        if (!existing.isEmpty()) {
-            Boolean wasLike = existing.get(0);
-            if (wasLike) {
-                return;
-            } else {
-                jdbc.update("UPDATE review_likes SET is_like = true WHERE review_id = ? AND user_id = ?",
-                        reviewId, userId);
-                jdbc.update("UPDATE reviews SET useful = useful + 2 WHERE review_id = ?", reviewId);
-            }
-        } else {
-            jdbc.update("INSERT INTO review_likes (review_id, user_id, is_like) VALUES (?, ?, true)",
-                    reviewId, userId);
+        if (!existing.isEmpty() && !existing.get(0)) {
+            jdbc.update(mergeSql, reviewId, userId);
+            jdbc.update("UPDATE reviews SET useful = useful + 2 WHERE review_id = ?", reviewId);
+        } else if (existing.isEmpty()) {
+            jdbc.update(mergeSql, reviewId, userId);
             jdbc.update("UPDATE reviews SET useful = useful + 1 WHERE review_id = ?", reviewId);
         }
+
         log.debug("Пользователь {} поставил лайк отзыву {}", userId, reviewId);
     }
 
     public void addDislike(Long reviewId, Long userId) {
+        String mergeSql = "MERGE INTO review_likes (review_id, user_id, is_like) " +
+                "KEY (review_id, user_id) " +
+                "VALUES (?, ?, false)";
+
         String checkSql = "SELECT is_like FROM review_likes WHERE review_id = ? AND user_id = ?";
         List<Boolean> existing = jdbc.queryForList(checkSql, Boolean.class, reviewId, userId);
 
-        if (!existing.isEmpty()) {
-            Boolean wasLike = existing.get(0);
-            if (!wasLike) {
-                return;
-            } else {
-                jdbc.update("UPDATE review_likes SET is_like = false WHERE review_id = ? AND user_id = ?",
-                        reviewId, userId);
-                jdbc.update("UPDATE reviews SET useful = useful - 2 WHERE review_id = ?", reviewId);
-            }
-        } else {
-            jdbc.update("INSERT INTO review_likes (review_id, user_id, is_like) VALUES (?, ?, false)",
-                    reviewId, userId);
+        if (!existing.isEmpty() && existing.get(0)) {
+            jdbc.update(mergeSql, reviewId, userId);
+            jdbc.update("UPDATE reviews SET useful = useful - 2 WHERE review_id = ?", reviewId);
+        } else if (existing.isEmpty()) {
+            jdbc.update(mergeSql, reviewId, userId);
             jdbc.update("UPDATE reviews SET useful = useful - 1 WHERE review_id = ?", reviewId);
         }
+
         log.debug("Пользователь {} поставил дизлайк отзыву {}", userId, reviewId);
     }
 

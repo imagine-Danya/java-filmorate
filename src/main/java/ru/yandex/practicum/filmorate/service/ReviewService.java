@@ -97,6 +97,13 @@ public class ReviewService {
                 .orElseThrow(() -> new NotFoundException("Отзыв с id " + id + " не найден"));
     }
 
+    public Collection<Review> getReviews(Long filmId, int count) {
+        if (filmId == null) {
+            return findAll(count);
+        }
+        return findByFilmId(filmId, count);
+    }
+
     public Collection<Review> findByFilmId(Long filmId, int count) {
         if (count < 0) {
             throw new ValidationException("Параметр count не может быть отрицательным");

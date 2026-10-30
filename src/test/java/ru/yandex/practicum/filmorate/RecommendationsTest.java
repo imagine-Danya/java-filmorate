@@ -65,9 +65,7 @@ class RecommendationsTest {
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film2Id, user1Id);
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film1Id, user2Id);
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film2Id, user2Id);
-
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film3Id, user2Id);
-
         jdbc.update("INSERT INTO likes (film_id, user_id) VALUES (?, ?)", film4Id, user3Id);
     }
 
@@ -97,6 +95,11 @@ class RecommendationsTest {
     @Test
     void getRecommendations_ReturnsFilmsBasedOnSimilarUsers() throws Exception {
         mockMvc.perform(get("/users/{id}/recommendations", user1Id))
+                .andDo(result -> {
+                    if (result.getResponse().getStatus() == 500) {
+                        System.err.println("Ошибка 500: " + result.getResponse().getContentAsString());
+                    }
+                })
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].name").value("Фильм 3"));
@@ -105,6 +108,11 @@ class RecommendationsTest {
     @Test
     void getRecommendations_ReturnsEmptyListIfNoSimilarUsers() throws Exception {
         mockMvc.perform(get("/users/{id}/recommendations", user3Id))
+                .andDo(result -> {
+                    if (result.getResponse().getStatus() == 500) {
+                        System.err.println("Ошибка 500: " + result.getResponse().getContentAsString());
+                    }
+                })
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
     }

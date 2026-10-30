@@ -174,32 +174,9 @@ public class FilmService {
             throw new NotFoundException("Пользователь с id " + userId + " не найден");
         }
 
-        List<Long> userLikedFilms = likeStorage.getUserLikedFilms(userId);
-        Set<Long> similarUsers = new HashSet<>();
-        for (Long filmId : userLikedFilms) {
-            List<Long> usersWhoLiked = likeStorage.getUsersWhoLikedFilm(filmId);
-            for (Long uid : usersWhoLiked) {
-                if (!uid.equals(userId)) {
-                    similarUsers.add(uid);
-                }
-            }
-        }
+        List<Long> recommendedFilmIds = likeStorage.getRecommendedFilmIds(userId);
 
-        Map<Long, Integer> filmScores = new HashMap<>();
-        for (Long similarUserId : similarUsers) {
-            List<Long> similarUserLikedFilms = likeStorage.getUserLikedFilms(similarUserId);
-            for (Long filmId : similarUserLikedFilms) {
-                if (!userLikedFilms.contains(filmId)) {
-                    filmScores.merge(filmId, 1, Integer::sum);
-                }
-            }
-        }
-
-        return filmScores.entrySet().stream()
-                .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
-                .map(entry -> filmStorage.findById(entry.getKey()).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        return filmStorage.findByIds(recommendedFilmIds);
     }
 
     private void validateFilm(Film film) {
