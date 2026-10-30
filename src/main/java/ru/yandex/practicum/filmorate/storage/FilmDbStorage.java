@@ -16,6 +16,7 @@ import ru.yandex.practicum.filmorate.model.MpaRating;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -108,28 +109,41 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Optional<Film> findById(Long id) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name as mpa_name, m.description as mpa_description " +
+                "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
+                "d.director_id, d.name as director_name, d.surname as director_surname " +
                 "FROM films f " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
+                "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "WHERE f.film_id = ?";
-        List<Film> films = jdbc.query(sql, filmWithMpaMapper, id);
-        if (films.isEmpty()) return Optional.empty();
 
-        Film film = films.get(0);
-        enrichFilm(film);
-        return Optional.of(film);
+        List<Film> films = jdbc.query(sql, new FilmRowMapper(), id);
+
+        if (films.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(films.get(0));
     }
 
     @Override
     public Collection<Film> findAll() {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name as mpa_name, m.description as mpa_description " +
+                "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
+                "d.director_id, d.name as director_name, d.surname as director_surname " +
                 "FROM films f " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
+                "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "ORDER BY f.film_id";
-        List<Film> films = jdbc.query(sql, filmWithMpaMapper);
-        enrichFilms(films);
-        return films;
+
+        return jdbc.query(sql, new FilmRowMapper());
     }
 
     @Override
@@ -141,19 +155,22 @@ public class FilmDbStorage implements FilmStorage {
         String orderBy = "year".equalsIgnoreCase(sortBy) ? "f.release_date ASC" : "COUNT(l.user_id) DESC";
 
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name as mpa_name, m.description as mpa_description " +
+                "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
+                "d.director_id, d.name as director_name, d.surname as director_surname " +
                 "FROM films f " +
                 "JOIN film_directors fd ON f.film_id = fd.film_id " +
                 "LEFT JOIN likes l ON f.film_id = l.film_id " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "WHERE fd.director_id = ? " +
                 "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name, m.description " +
+                "m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname " +
                 "ORDER BY " + orderBy;
 
-        List<Film> films = jdbc.query(sql, filmWithMpaMapper, directorId);
-        enrichFilms(films);
-        return films;
+        return jdbc.query(sql, new FilmRowMapper(), directorId);
     }
 
     @Override
@@ -164,15 +181,26 @@ public class FilmDbStorage implements FilmStorage {
 
         StringBuilder sql = new StringBuilder();
         sql.append("SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ")
-                .append("m.name as mpa_name, m.description as mpa_description ")
+                .append("m.name as mpa_name, m.description as mpa_description, ")
+                .append("g.genre_id, g.name as genre_name, ")
+                .append("d.director_id, d.name as director_name, d.surname as director_surname ")
                 .append("FROM films f ")
-                .append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
-                .append("LEFT JOIN directors d ON fd.director_id = d.director_id ")
-                .append("LEFT JOIN likes l ON f.film_id = l.film_id ")
                 .append("LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id ")
-                .append("WHERE ");
+                .append("LEFT JOIN film_genres fg ON f.film_id = fg.film_id ")
+                .append("LEFT JOIN genres g ON fg.genre_id = g.genre_id ");
 
         List<Object> params = new ArrayList<>();
+
+        if (searchByDirector) {
+            sql.append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
+                    .append("LEFT JOIN directors d ON fd.director_id = d.director_id ");
+        } else {
+            sql.append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
+                    .append("LEFT JOIN directors d ON fd.director_id = d.director_id ");
+        }
+
+        sql.append("LEFT JOIN likes l ON f.film_id = l.film_id ")
+                .append("WHERE ");
 
         if (searchByTitle && searchByDirector) {
             sql.append("(LOWER(f.name) LIKE ? OR LOWER(d.name) LIKE ? OR LOWER(d.surname) LIKE ?)");
@@ -189,89 +217,31 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         sql.append(" GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, ");
-        sql.append("m.name, m.description ");
+        sql.append("m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname ");
         sql.append("ORDER BY COUNT(l.user_id) DESC");
 
-        List<Film> films = jdbc.query(sql.toString(), filmWithMpaMapper, params.toArray());
-        enrichFilms(films);
-        return films;
+        return jdbc.query(sql.toString(), new FilmRowMapper(), params.toArray());
     }
 
     @Override
     public List<Film> getCommonFilms(Long userId, Long friendId) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
                 "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
                 "d.director_id, d.name as director_name, d.surname as director_surname " +
                 "FROM films f " +
                 "JOIN ( SELECT film_id FROM likes WHERE user_id = ? INTERSECT SELECT film_id FROM likes WHERE user_id = ? ) common ON f.film_id = common.film_id " +
                 "LEFT JOIN likes l ON f.film_id = l.film_id " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
                 "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
                 "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "GROUP BY f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name, m.description, d.director_id, d.name, d.surname " +
+                "m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname " +
                 "ORDER BY COUNT(l.user_id) DESC";
 
-        Map<Long, Film> filmMap = new LinkedHashMap<>();
-        Map<Long, Set<Director>> directorsMap = new HashMap<>();
-
-        jdbc.query(sql, (rs, rowNum) -> {
-            Long filmId = rs.getLong("film_id");
-            if (!filmMap.containsKey(filmId)) {
-                Film film = new Film();
-                film.setId(filmId);
-                film.setName(rs.getString("name"));
-                film.setDescription(rs.getString("description"));
-                film.setReleaseDate(rs.getDate("release_date").toLocalDate());
-                film.setDuration(rs.getInt("duration"));
-
-                MpaRating mpa = new MpaRating();
-                mpa.setId(rs.getLong("mpa_rating_id"));
-                mpa.setName(rs.getString("mpa_name"));
-                mpa.setDescription(rs.getString("mpa_description"));
-                film.setMpa(mpa);
-                film.setDirectors(new LinkedHashSet<>());
-                film.setGenres(new LinkedHashSet<>());
-
-                filmMap.put(filmId, film);
-            }
-
-            Long directorId = rs.getObject("director_id") != null ? rs.getLong("director_id") : null;
-            if (directorId != null) {
-                Director director = new Director();
-                director.setId(directorId);
-                director.setName(rs.getString("director_name"));
-                director.setSurname(rs.getString("director_surname"));
-                directorsMap.computeIfAbsent(filmId, k -> new LinkedHashSet<>()).add(director);
-            }
-            return null;
-        }, userId, friendId);
-
-        List<Film> films = new ArrayList<>(filmMap.values());
-
-        if (!films.isEmpty()) {
-            Set<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toSet());
-            String genresSql = "SELECT fg.film_id, g.genre_id, g.name " +
-                    "FROM film_genres fg JOIN genres g ON fg.genre_id = g.genre_id " +
-                    "WHERE fg.film_id IN (" + filmIds.stream().map(id -> "?").collect(Collectors.joining(",")) + ")";
-
-            Map<Long, Set<Genre>> genresMap = new HashMap<>();
-            jdbc.query(genresSql, (rs, rowNum) -> {
-                Long fId = rs.getLong("film_id");
-                Genre genre = new Genre();
-                genre.setId(rs.getLong("genre_id"));
-                genre.setName(rs.getString("name"));
-                genresMap.computeIfAbsent(fId, k -> new LinkedHashSet<>()).add(genre);
-                return null;
-            }, filmIds.toArray());
-
-            for (Film film : films) {
-                film.setDirectors(directorsMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-                film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-            }
-        }
-
-        return films;
+        return jdbc.query(sql, new FilmRowMapper(), userId, friendId);
     }
 
     @Override
@@ -287,13 +257,18 @@ public class FilmDbStorage implements FilmStorage {
 
         String placeholders = ids.stream().map(id -> "?").collect(Collectors.joining(","));
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
-                "m.name as mpa_name, m.description as mpa_description " +
+                "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
+                "d.director_id, d.name as director_name, d.surname as director_surname " +
                 "FROM films f " +
                 "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
+                "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "WHERE f.film_id IN (" + placeholders + ")";
 
-        List<Film> films = jdbc.query(sql, filmWithMpaMapper, ids.toArray());
-        enrichFilms(films);
+        List<Film> films = jdbc.query(sql, new FilmRowMapper(), ids.toArray());
 
         Map<Long, Film> filmMap = films.stream().collect(Collectors.toMap(Film::getId, f -> f));
         return ids.stream()
@@ -314,93 +289,76 @@ public class FilmDbStorage implements FilmStorage {
         }
     }
 
-    private void enrichFilm(Film film) {
-        if (film.getMpa() != null && film.getMpa().getName() == null) {
-            mpaRatingDbStorage.findById(film.getMpa().getId()).ifPresent(film::setMpa);
-        }
-        film.setGenres(loadGenres(film.getId()));
-        film.setDirectors(loadDirectors(film.getId()));
-    }
+    private static class FilmRowMapper implements RowMapper<Film> {
+        private final Map<Long, Film> filmCache = new LinkedHashMap<>();
 
-    private void enrichFilms(List<Film> films) {
-        if (films.isEmpty()) return;
-
-        Set<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toSet());
-
-        String genresSql = "SELECT fg.film_id, g.genre_id, g.name " +
-                "FROM film_genres fg JOIN genres g ON fg.genre_id = g.genre_id " +
-                "WHERE fg.film_id IN (" + filmIds.stream().map(id -> "?").collect(Collectors.joining(",")) + ") " +
-                "ORDER BY fg.film_id, g.genre_id";
-
-        Map<Long, Set<Genre>> genresMap = new HashMap<>();
-        jdbc.query(genresSql, (rs, rowNum) -> {
+        @Override
+        public Film mapRow(ResultSet rs, int rowNum) throws SQLException {
             Long filmId = rs.getLong("film_id");
-            Genre genre = new Genre();
-            genre.setId(rs.getLong("genre_id"));
-            genre.setName(rs.getString("name"));
-            genresMap.computeIfAbsent(filmId, k -> new LinkedHashSet<>()).add(genre);
-            return null;
-        }, filmIds.toArray());
 
-        String directorsSql = "SELECT fd.film_id, d.director_id, d.name, d.surname " +
-                "FROM film_directors fd JOIN directors d ON fd.director_id = d.director_id " +
-                "WHERE fd.film_id IN (" + filmIds.stream().map(id -> "?").collect(Collectors.joining(",")) + ") " +
-                "ORDER BY fd.film_id, d.director_id";
-
-        Map<Long, Set<Director>> directorsMap = new HashMap<>();
-        jdbc.query(directorsSql, (rs, rowNum) -> {
-            Long filmId = rs.getLong("film_id");
-            Director director = new Director();
-            director.setId(rs.getLong("director_id"));
-            director.setName(rs.getString("name"));
-            director.setSurname(rs.getString("surname"));
-            directorsMap.computeIfAbsent(filmId, k -> new LinkedHashSet<>()).add(director);
-            return null;
-        }, filmIds.toArray());
-
-        for (Film film : films) {
-            if (film.getMpa() != null && film.getMpa().getName() == null) {
-                mpaRatingDbStorage.findById(film.getMpa().getId()).ifPresent(film::setMpa);
+            if (filmCache.containsKey(filmId)) {
+                Film existingFilm = filmCache.get(filmId);
+                Long genreId = rs.getObject("genre_id") != null ? rs.getLong("genre_id") : null;
+                if (genreId != null) {
+                    Genre genre = new Genre();
+                    genre.setId(genreId);
+                    genre.setName(rs.getString("genre_name"));
+                    existingFilm.getGenres().add(genre);
+                }
+                Long directorId = rs.getObject("director_id") != null ? rs.getLong("director_id") : null;
+                if (directorId != null) {
+                    Director director = new Director();
+                    director.setId(directorId);
+                    director.setName(rs.getString("director_name"));
+                    director.setSurname(rs.getString("director_surname"));
+                    existingFilm.getDirectors().add(director);
+                }
+                return existingFilm;
             }
-            film.setGenres(genresMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
-            film.setDirectors(directorsMap.getOrDefault(film.getId(), new LinkedHashSet<>()));
+
+            Film film = new Film();
+            film.setId(filmId);
+            film.setName(rs.getString("name"));
+            film.setDescription(rs.getString("description"));
+            film.setReleaseDate(rs.getDate("release_date").toLocalDate());
+            film.setDuration(rs.getInt("duration"));
+
+            MpaRating mpa = new MpaRating();
+            mpa.setId(rs.getLong("mpa_rating_id"));
+            String mpaName = rs.getString("mpa_name");
+            if (mpaName != null) {
+                mpa.setName(mpaName);
+                mpa.setDescription(rs.getString("mpa_description"));
+            }
+            film.setMpa(mpa);
+
+            Set<Genre> genres = new LinkedHashSet<>();
+            Long genreId = rs.getObject("genre_id") != null ? rs.getLong("genre_id") : null;
+            if (genreId != null) {
+                Genre genre = new Genre();
+                genre.setId(genreId);
+                genre.setName(rs.getString("genre_name"));
+                genres.add(genre);
+            }
+            film.setGenres(genres);
+
+            Set<Director> directors = new LinkedHashSet<>();
+            Long directorId = rs.getObject("director_id") != null ? rs.getLong("director_id") : null;
+            if (directorId != null) {
+                Director director = new Director();
+                director.setId(directorId);
+                director.setName(rs.getString("director_name"));
+                director.setSurname(rs.getString("director_surname"));
+                directors.add(director);
+            }
+            film.setDirectors(directors);
+
+            filmCache.put(filmId, film);
+            return film;
+        }
+
+        public List<Film> getFilms() {
+            return new ArrayList<>(filmCache.values());
         }
     }
-
-    private Set<Genre> loadGenres(Long filmId) {
-        List<Long> genreIds = jdbc.queryForList(
-                "SELECT genre_id FROM film_genres WHERE film_id = ? ORDER BY genre_id ASC",
-                Long.class, filmId);
-        Set<Genre> genres = new LinkedHashSet<>();
-        for (Long id : genreIds) {
-            genreDbStorage.findById(id).ifPresent(genres::add);
-        }
-        return genres;
-    }
-
-    private Set<Director> loadDirectors(Long filmId) {
-        List<Long> directorIds = jdbc.queryForList(
-                "SELECT director_id FROM film_directors WHERE film_id = ? ORDER BY director_id ASC",
-                Long.class, filmId);
-        Set<Director> directors = new LinkedHashSet<>();
-        for (Long id : directorIds) {
-            directorStorage.findById(id).ifPresent(directors::add);
-        }
-        return directors;
-    }
-
-    private final RowMapper<Film> filmWithMpaMapper = (ResultSet rs, int rowNum) -> {
-        Film film = new Film();
-        film.setId(rs.getLong("film_id"));
-        film.setName(rs.getString("name"));
-        film.setDescription(rs.getString("description"));
-        film.setReleaseDate(rs.getDate("release_date").toLocalDate());
-        film.setDuration(rs.getInt("duration"));
-        MpaRating mpa = new MpaRating();
-        mpa.setId(rs.getLong("mpa_rating_id"));
-        mpa.setName(rs.getString("mpa_name"));
-        mpa.setDescription(rs.getString("mpa_description"));
-        film.setMpa(mpa);
-        return film;
-    };
 }
