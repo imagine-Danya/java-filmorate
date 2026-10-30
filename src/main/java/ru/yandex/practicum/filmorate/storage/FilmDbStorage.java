@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -120,13 +121,8 @@ public class FilmDbStorage implements FilmStorage {
                 "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "WHERE f.film_id = ?";
 
-        List<Film> films = jdbc.query(sql, new FilmRowMapper(), id);
-
-        if (films.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(films.get(0));
+        List<Film> films = queryFilms(sql, id);
+        return films.isEmpty() ? Optional.empty() : Optional.of(films.get(0));
     }
 
     @Override
@@ -143,7 +139,7 @@ public class FilmDbStorage implements FilmStorage {
                 "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "ORDER BY f.film_id";
 
-        return jdbc.query(sql, new FilmRowMapper());
+        return queryFilms(sql);
     }
 
     @Override
@@ -170,7 +166,7 @@ public class FilmDbStorage implements FilmStorage {
                 "m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname " +
                 "ORDER BY " + orderBy;
 
-        return jdbc.query(sql, new FilmRowMapper(), directorId);
+        return queryFilms(sql, directorId);
     }
 
     @Override
@@ -187,20 +183,13 @@ public class FilmDbStorage implements FilmStorage {
                 .append("FROM films f ")
                 .append("LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id ")
                 .append("LEFT JOIN film_genres fg ON f.film_id = fg.film_id ")
-                .append("LEFT JOIN genres g ON fg.genre_id = g.genre_id ");
+                .append("LEFT JOIN genres g ON fg.genre_id = g.genre_id ")
+                .append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
+                .append("LEFT JOIN directors d ON fd.director_id = d.director_id ")
+                .append("LEFT JOIN likes l ON f.film_id = l.film_id ")
+                .append("WHERE ");
 
         List<Object> params = new ArrayList<>();
-
-        if (searchByDirector) {
-            sql.append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
-                    .append("LEFT JOIN directors d ON fd.director_id = d.director_id ");
-        } else {
-            sql.append("LEFT JOIN film_directors fd ON f.film_id = fd.film_id ")
-                    .append("LEFT JOIN directors d ON fd.director_id = d.director_id ");
-        }
-
-        sql.append("LEFT JOIN likes l ON f.film_id = l.film_id ")
-                .append("WHERE ");
 
         if (searchByTitle && searchByDirector) {
             sql.append("(LOWER(f.name) LIKE ? OR LOWER(d.name) LIKE ? OR LOWER(d.surname) LIKE ?)");
@@ -220,7 +209,7 @@ public class FilmDbStorage implements FilmStorage {
         sql.append("m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname ");
         sql.append("ORDER BY COUNT(l.user_id) DESC");
 
-        return jdbc.query(sql.toString(), new FilmRowMapper(), params.toArray());
+        return queryFilms(sql.toString(), params.toArray());
     }
 
     @Override
@@ -241,12 +230,40 @@ public class FilmDbStorage implements FilmStorage {
                 "m.name, m.description, g.genre_id, g.name, d.director_id, d.name, d.surname " +
                 "ORDER BY COUNT(l.user_id) DESC";
 
-        return jdbc.query(sql, new FilmRowMapper(), userId, friendId);
+        return queryFilms(sql, userId, friendId);
     }
 
     @Override
     public List<Film> getRecommendations(Long userId) {
-        return Collections.emptyList();
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_rating_id, " +
+                "m.name as mpa_name, m.description as mpa_description, " +
+                "g.genre_id, g.name as genre_name, " +
+                "d.director_id, d.name as director_name, d.surname as director_surname " +
+                "FROM films f " +
+                "LEFT JOIN mpa_ratings m ON f.mpa_rating_id = m.mpa_rating_id " +
+                "LEFT JOIN film_genres fg ON f.film_id = fg.film_id " +
+                "LEFT JOIN genres g ON fg.genre_id = g.genre_id " +
+                "LEFT JOIN film_directors fd ON f.film_id = fd.film_id " +
+                "LEFT JOIN directors d ON fd.director_id = d.director_id " +
+                "WHERE f.film_id IN (" +
+                "    SELECT l.film_id " +
+                "    FROM likes l " +
+                "    WHERE l.user_id IN (" +
+                "        SELECT l2.user_id " +
+                "        FROM likes l2 " +
+                "        WHERE l2.film_id IN (" +
+                "            SELECT film_id FROM likes WHERE user_id = ?" +
+                "        ) " +
+                "        AND l2.user_id != ?" +
+                "    ) " +
+                "    AND l.film_id NOT IN (" +
+                "        SELECT film_id FROM likes WHERE user_id = ?" +
+                "    ) " +
+                "    GROUP BY l.film_id " +
+                "    ORDER BY COUNT(l.user_id) DESC" +
+                ")";
+
+        return queryFilms(sql, userId, userId, userId);
     }
 
     @Override
@@ -268,7 +285,7 @@ public class FilmDbStorage implements FilmStorage {
                 "LEFT JOIN directors d ON fd.director_id = d.director_id " +
                 "WHERE f.film_id IN (" + placeholders + ")";
 
-        List<Film> films = jdbc.query(sql, new FilmRowMapper(), ids.toArray());
+        List<Film> films = queryFilms(sql, ids.toArray());
 
         Map<Long, Film> filmMap = films.stream().collect(Collectors.toMap(Film::getId, f -> f));
         return ids.stream()
@@ -287,6 +304,18 @@ public class FilmDbStorage implements FilmStorage {
         for (Director director : directors) {
             jdbc.update("INSERT INTO film_directors (film_id, director_id) VALUES (?, ?)", filmId, director.getId());
         }
+    }
+
+    private List<Film> queryFilms(String sql, Object... params) {
+        FilmRowMapper mapper = new FilmRowMapper();
+        jdbc.query(sql, (ResultSetExtractor<Void>) rs -> {
+            int rowNum = 0;
+            while (rs.next()) {
+                mapper.mapRow(rs, rowNum++);
+            }
+            return null;
+        }, params);
+        return mapper.getFilms();
     }
 
     private static class FilmRowMapper implements RowMapper<Film> {
@@ -330,6 +359,7 @@ public class FilmDbStorage implements FilmStorage {
                 mpa.setName(mpaName);
                 mpa.setDescription(rs.getString("mpa_description"));
             }
+
             film.setMpa(mpa);
 
             Set<Genre> genres = new LinkedHashSet<>();
@@ -340,6 +370,7 @@ public class FilmDbStorage implements FilmStorage {
                 genre.setName(rs.getString("genre_name"));
                 genres.add(genre);
             }
+
             film.setGenres(genres);
 
             Set<Director> directors = new LinkedHashSet<>();
@@ -351,6 +382,7 @@ public class FilmDbStorage implements FilmStorage {
                 director.setSurname(rs.getString("director_surname"));
                 directors.add(director);
             }
+
             film.setDirectors(directors);
 
             filmCache.put(filmId, film);
